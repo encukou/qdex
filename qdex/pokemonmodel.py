@@ -15,29 +15,107 @@ from pokedex.db import tables, media
 
 from qdex.querymodel import QueryModel, ModelColumn
 
+class PokemonItemDelegate(QtGui.QStyledItemDelegate):
+    """Delegate for a Pokémon
+
+    Shows summary information when the group of forms is collapsed.
+    """
+    def __init__(self, view):
+        super(PokemonItemDelegate, self).__init__()
+        self.view = view
+
+    def indexToShow(self, index, summary=None):
+        """Get the index to show instead of this one
+
+        summary can be True to show the all-forms summary information (if
+            the row is expandable at all), False to show the notmal data,
+            or None to choose based on the state of the view
+
+        It's not too easy to hijack the QItemDelegate pipeling with custom
+        data, so we hack around this by storing the summary in a child with
+        row -1 (which isn't accessible from normal views), and switching to
+        that when necessary.
+        """
+        if summary is False:
+            return index
+        parent = index.sibling(index.row(), 0)
+        hasChildren = index.model().hasChildren(parent)
+        if summary is None:
+            summary = hasChildren and not self.view.isExpanded(parent)
+        if summary and hasChildren:
+            return parent.child(-1, index.column())
+        else:
+            return index
+
+    def paint(self, painter, option, index):
+        index = self.indexToShow(index)
+        super(PokemonItemDelegate, self).paint(painter, option, index)
+
+    def sizeHint(self, option, index):
+        hint = super(PokemonItemDelegate, self).sizeHint
+        summaryHint = hint(option, self.indexToShow(index, True))
+        return hint(option, index).expandedTo(summaryHint)
+
 class PokemonColumn(ModelColumn):
     """Column for the Pokemon model
 
     The main thing about these is that they have to worry about collapsing.
     """
     collapsing = 0
+    delegate = PokemonItemDelegate
+
+    def collapsedData(self, forms, index, role):
+        """Return a summary of data from all `forms`
+        """
+        return self.data(forms[0], index, role)
+
+class PokemonNameDelegate(PokemonItemDelegate):
+    """Delegate for the Pokémon icon/name column"""
+    def sizeHint(self, option, index):
+        option.decorationSize = QtCore.QSize(0, 0)
+        self.view.model()._hack_small_icons = True
+        hint = super(PokemonNameDelegate, self).sizeHint(option, index)
+        self.view.model()._hack_small_icons = False
+        return hint
+
+    def paint(self, painter, option, index):
+        option.decorationAlignment = Qt.AlignBottom | Qt.AlignHCenter
+        super(PokemonNameDelegate, self).paint(painter, option, index)
 
 class PokemonNameColumn(PokemonColumn):
     """Display the pokémon name & icon"""
     collapsing = 2
+    delegate = PokemonNameDelegate
+
     def __init__(self, **kwargs):
         super(PokemonNameColumn, self).__init__(name='Name', **kwargs)
 
-    def data(self, form, role):
+    def data(self, form, index, role):
         if role == Qt.DisplayRole:
             return form.pokemon_name
         elif role == Qt.DecorationRole:
+            if index.model()._hack_small_icons:
+                return QtGui.QPixmap(32, 24)
             try:
-                return QtGui.QPixmap(form.media.icon().path)
+                key = "flipped pokemon icon/%s" % form.id
+                pixmap = QtGui.QPixmap()
+                if not QtGui.QPixmapCache.find(key, pixmap):
+                    pixmap.load(form.media.icon().path)
+                    transform = QtGui.QTransform.fromScale(-1, 1)
+                    pixmap = pixmap.transformed(transform)
+                    QtGui.QPixmapCache.insert(key, pixmap)
+                return pixmap
             except ValueError:
                 return QtGui.QPixmap(media.PokemonMediaById(0).icon().path)
-        elif role == Qt.SizeHintRole:
-            return QtCore.QSize(32, 32)  # XXX: Do 24x24, with a cool Delegate
+
+    def collapsedData(self, forms, index, role):
+        if role == Qt.DisplayRole:
+            return "{name} ({forms})".format(
+                    name=forms[0].pokemon.name,
+                    forms=len(forms),
+                )
+        else:
+            return self.data(forms[0], index, role)
 
 class PokemonTypeColumn(PokemonColumn):
     """Display the pokémon type/s"""
@@ -45,9 +123,29 @@ class PokemonTypeColumn(PokemonColumn):
     def __init__(self, **kwargs):
         super(PokemonTypeColumn, self).__init__(name='Type', **kwargs)
 
-    def data(self, form, role):
+    def data(self, form, index, role):
         if role == Qt.DisplayRole:
             return '/'.join(t.name for t in form.pokemon.types)
+        elif role == Qt.UserRole:
+            return form.pokemon.types
+
+    def collapsedData(self, forms, index, role=Qt.UserRole):
+        if role == Qt.UserRole:
+            typesFirst = forms[0].pokemon.types
+            typesFirstSet = set(typesFirst)
+            typesOther = [f.pokemon.types for f in forms[1:]]
+            commonTypes = typesFirstSet.intersection(*typesOther)
+            allTypes = typesFirstSet.union(*typesOther)
+            extraTypes = allTypes - commonTypes
+            commonTypes = sorted(commonTypes, key=typesFirst.index)
+            if extraTypes:
+                commonTypes.append(None)
+            return commonTypes
+        elif role == Qt.DisplayRole:
+            types = self.collapsedData(forms, index)
+            return '/'.join(t.name if t else '...' for t in types)
+        else:
+            return self.data(forms[0], index, role)
 
 class PokemonModel(QueryModel):
     """Pokémon query model
@@ -74,6 +172,7 @@ class PokemonModel(QueryModel):
         query = query.options(lazyload('form_base_pokemon.texts'))
         query = query.order_by(tables.Pokemon.order, tables.PokemonForm.id)
         super(PokemonModel, self).__init__(query, columns)
+        self._hack_small_icons = False
 
     def _setQuery(self):
         self._query = self.baseQuery
@@ -111,10 +210,14 @@ class PokemonModel(QueryModel):
         return self.items[i]
 
     def index(self, row, column, parent=QtCore.QModelIndex()):
-        if not parent.isValid():
-            return self.createIndex(row, column, -1)
-        else:
-            return self.createIndex(row, column, parent.row())
+        if 0 <= column < self.columnCount():
+            if not parent.isValid():
+                if 0 <= row < self.rowCount():
+                    return self.createIndex(row, column, -1)
+            else:
+                if -1 <= row < self.rowCount(parent):
+                    return self.createIndex(row, column, parent.row())
+        return QtCore.QModelIndex()
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         if not parent.isValid():
@@ -124,6 +227,15 @@ class PokemonModel(QueryModel):
             return len(self.collapsed[key])
         else:
             return 0
+
+    def data(self, index, role):
+        if index.row() >= 0:
+            return super(PokemonModel, self).data(index, role)
+        else:
+            item = self[index.internalId()]
+            items = [item] + self.collapsed[self.collapseKey(item)]
+            column = self.columns[index.column()]
+            return column.collapsedData(items, index, role)
 
     def parent(self, index):
         iid = index.internalId()

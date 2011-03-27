@@ -13,6 +13,7 @@ Qt = QtCore.Qt
 from pokedex.db import connect, tables, media
 
 from qdex.pokemonmodel import PokemonModel, PokemonNameColumn, PokemonTypeColumn
+from qdex.queryview import QueryView
 
 session = connect(engine_args=dict(echo=True))
 
@@ -25,9 +26,9 @@ def main():
 
     app = QtGui.QApplication(sys.argv)
 
-    hello = QtGui.QTreeView()
-    hello.setUniformRowHeights(True)
+    hello = QueryView()
     hello.setModel(pokemodel)
+    hello.resize(800, 600)
 
     hello.show()
 

@@ -6,7 +6,7 @@
 Query models
 """
 
-from PySide import QtCore
+from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 
 class ModelColumn(object):
@@ -20,8 +20,13 @@ class ModelColumn(object):
         if role == Qt.DisplayRole:
             return self.name
 
-    def data(self, item, role):
+    def data(self, item, index, role):
         """Data for `item`"""
+
+    @staticmethod
+    def delegate(view):
+        """Return a delegate for this column, using the given view"""
+        return QtGui.QStyledItemDelegate()
 
 class SimpleModelColumn(ModelColumn):
     """A pretty dumb column that just gets an attribute and displays it
@@ -32,7 +37,7 @@ class SimpleModelColumn(ModelColumn):
         super(SimpleModelColumn, self).__init__(name=name, **kwargs)
         self.attr = attr
 
-    def data(self, item, role):
+    def data(self, item, index, role):
         if role == Qt.DisplayRole:
             return getattr(item, self.attr)
 
@@ -41,7 +46,9 @@ class QueryModel(QtCore.QAbstractItemModel):
 
     Can be queried the Python way, (with []).
     """
-    _pagesize = 20
+    collapsingPossible = False
+    _pagesize = 100
+
     def __init__(self, query, columns):
         super(QueryModel, self).__init__()
         self.baseQuery = query
@@ -70,7 +77,7 @@ class QueryModel(QtCore.QAbstractItemModel):
     def data(self, index, role):
         item = self.itemForIndex(index)
         if item:
-            return self.columns[index.column()].data(item, role)
+            return self.columns[index.column()].data(item, index, role)
 
     def itemForIndex(self, index):
         """Returns the item that corresponds to the given index"""
