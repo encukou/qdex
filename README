@@ -1,0 +1,25 @@
+A desktop pokédex using veekun's data, and the PySide bindings for Qt
+
+-------------------------------------------------------------------------------
+
+This software is copyrighted and licensed under the MIT license.  See the file
+entitled LICENSE for full copyright and license text.
+
+This software comes bundled with data, sprites, and sounds extracted from the
+Pokémon series of video games.  Some terminology from the Pokémon franchise is
+also necessarily used within the software itself.  This is all the intellectual
+property of Nintendo, Creatures, inc., and GAME FREAK, inc. and is protected by
+various copyrights and trademarks.  The author believes that the use of this
+intellectual property for a fan reference is covered by fair use and that the
+software is significantly impaired without said property included.  Any use of
+this copyrighted property is at your own legal risk.
+
+Also bundled with this software:
+- Fugue icon set by Yusuke Kamiyamane (http://p.yusukekamiyamane.com/)
+    used under the Creative Commons Attribution license
+    (http://creativecommons.org/licenses/by/3.0/)
+
+- Flag icons by Mark James (http://www.famfamfam.com/lab/icons/flags/)
+
+Contributors:
+Petr Viktorin (En-Cu-Kou): encukou@gmail.com
