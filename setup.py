@@ -6,6 +6,7 @@ setup(
 
     install_requires = [
         'pokedex',
+        'forrin',
         'PySide>=1.0',
     ],
 
