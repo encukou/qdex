@@ -92,9 +92,16 @@ class PokemonNameColumn(PokemonColumn):
 
     def data(self, form, index, role):
         if role == Qt.DisplayRole:
-            return form.pokemon_name
+            g = index.model().g
+            formName = g.name(form)
+            if formName:
+                return u'{0} {1}'.format(formName, form.form_base_pokemon.name)
+            else:
+                return form.form_base_pokemon.name
         elif role == Qt.DecorationRole:
             if index.model()._hack_small_icons:
+                # XXX: A hack to make the delegate think the icon is smaller
+                # than it really is
                 return QtGui.QPixmap(32, 24)
             try:
                 key = "flipped pokemon icon/%s" % form.id
@@ -163,15 +170,15 @@ class PokemonModel(QueryModel):
     Picture/form name can always be collapsed.
     """
     _pagesize = 100
-    def __init__(self, session, columns):
-        query = session.query(tables.PokemonForm)
+    def __init__(self, g, columns):
+        query = g.session.query(tables.PokemonForm)
         query = query.join(
                 (tables.Pokemon, tables.PokemonForm.form_base_pokemon)
             )
         query = query.options(contains_eager('form_base_pokemon'))
         query = query.options(lazyload('form_base_pokemon.texts'))
         query = query.order_by(tables.Pokemon.order, tables.PokemonForm.id)
-        super(PokemonModel, self).__init__(query, columns)
+        super(PokemonModel, self).__init__(g, query, columns)
         self._hack_small_icons = False
 
     def _setQuery(self):
@@ -197,16 +204,19 @@ class PokemonModel(QueryModel):
     def __getitem__(self, i):
         if not self.collapsing:
             return super(PokemonModel, self).__getitem__(i)
-        while len(self.items) <= i:
-            print i
-            nextitem = super(PokemonModel, self).__getitem__(self.nextindex)
-            self.nextindex += 1
-            key = self.collapseKey(nextitem)
-            if key in self.collapsed:
-                self.collapsed[key].append(nextitem)
+        while len(self.items) <= i + 1:
+            try:
+                nextitem = super(PokemonModel, self).__getitem__(self.nextindex)
+            except IndexError:
+                break
             else:
-                self.items.append(nextitem)
-                self.collapsed[key] = []
+                self.nextindex += 1
+                key = self.collapseKey(nextitem)
+                if key in self.collapsed:
+                    self.collapsed[key].append(nextitem)
+                else:
+                    self.items.append(nextitem)
+                    self.collapsed[key] = []
         return self.items[i]
 
     def index(self, row, column, parent=QtCore.QModelIndex()):
@@ -223,7 +233,7 @@ class PokemonModel(QueryModel):
         if not parent.isValid():
             return self._rows
         elif parent.internalId() == -1:
-            key = self.collapseKey(self.items[parent.row()])
+            key = self.collapseKey(self[parent.row()])
             return len(self.collapsed[key])
         else:
             return 0

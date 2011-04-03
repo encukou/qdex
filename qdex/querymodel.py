@@ -49,8 +49,10 @@ class QueryModel(QtCore.QAbstractItemModel):
     collapsingPossible = False
     _pagesize = 100
 
-    def __init__(self, query, columns):
+    def __init__(self, g, query, columns):
         super(QueryModel, self).__init__()
+        self.g = g
+        self.g.registerRetranslate(self.allDataChanged)
         self.baseQuery = query
         self.columns = columns
         self.filters = []
@@ -61,6 +63,14 @@ class QueryModel(QtCore.QAbstractItemModel):
         self._query = self.baseQuery
         self._rows = int(self._query.count())
         self.pages = [None] * (self._rows / self._pagesize + 1)
+
+    def allDataChanged(self):
+        self._setQuery()
+        self.dataChanged.emit(
+                self.index(0, 0),
+                self.index(self.rowCount() - 1, self.columnCount() - 1),
+            )
+        self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount() - 1)
 
     def __getitem__(self, i):
         pageno, offset = divmod(i, self._pagesize)

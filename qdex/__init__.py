@@ -14,8 +14,8 @@ from qdex.mainwindow import MainWindow
 
 def main():
     app = QtGui.QApplication(sys.argv)
-    mw = MainWindow()
-    mw.show()
+    mainWindow = MainWindow()
+    mainWindow.show()
     sys.exit(app.exec_())
 
 if __name__ == '__main__':

@@ -63,7 +63,7 @@ class PokemonItem(MetamodelItem):
         try:
             return self._model
         except AttributeError:
-            self._model = PokemonModel(self.g.session, [
+            self._model = PokemonModel(self.g, [
                     PokemonNameColumn(), PokemonTypeColumn(),
                 ])
         return self._model
@@ -76,7 +76,7 @@ class QueryItem(MetamodelItem):
         try:
             return self._model
         except AttributeError:
-            self._model = QueryModel(self.g.session.query(self.kwargs['table']), [
+            self._model = QueryModel(self.g, self.g.session.query(self.kwargs['table']), [
                     SimpleModelColumn('id'), SimpleModelColumn('name'),
                 ])
         return self._model
@@ -86,6 +86,7 @@ class MetaModel(QtCore.QAbstractItemModel):
     """
     def __init__(self, g):
         super(MetaModel, self).__init__()
+        self.g = g
         # XXX: Need better icons!!!
         folder_icon = QtGui.QIcon(resource_filename('qdex',
                 'icons/folder-horizontal.png'))
@@ -155,10 +156,13 @@ class MetaModel(QtCore.QAbstractItemModel):
         """
         return self.index(0, 0)
 
-    @staticmethod
-    def setModelOnView(index, view):
+    def setModelOnView(self, index, view):
         """Set an index's model (if any) on a view
         """
-        model = index.data(Qt.UserRole).model
-        if model:
-            view.setModel(model)
+        self.g.mainwindow.setCursor(QtGui.QCursor(Qt.WaitCursor))
+        try:
+            model = index.data(Qt.UserRole).model
+            if model:
+                view.setModel(model)
+        finally:
+            self.g.mainwindow.unsetCursor()
