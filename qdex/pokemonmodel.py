@@ -176,7 +176,7 @@ class PokemonModel(QueryModel):
                 (tables.Pokemon, tables.PokemonForm.form_base_pokemon)
             )
         query = query.options(contains_eager('form_base_pokemon'))
-        query = query.options(lazyload('form_base_pokemon.texts'))
+        query = query.options(lazyload('form_base_pokemon.names'))
         query = query.order_by(tables.Pokemon.order, tables.PokemonForm.id)
         super(PokemonModel, self).__init__(g, query, columns)
         self._hack_small_icons = False
