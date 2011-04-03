@@ -15,10 +15,10 @@ class ModelColumn(object):
     def __init__(self, name):
         self.name = name
 
-    def headerData(self, role):
+    def headerData(self, role, model):
         """Data used for the column header"""
         if role == Qt.DisplayRole:
-            return self.name
+            return model.g.translator(self.name)
 
     def data(self, item, index, role):
         """Data for `item`"""
@@ -96,7 +96,7 @@ class QueryModel(QtCore.QAbstractItemModel):
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal:
-            return self.columns[section].headerData(role)
+            return self.columns[section].headerData(role, self)
 
     def index(self, row, column, parent=QtCore.QModelIndex()):
         if not parent.isValid():

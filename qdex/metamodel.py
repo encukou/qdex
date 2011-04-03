@@ -10,6 +10,7 @@ from pkg_resources import resource_filename
 
 from PySide import QtCore, QtGui
 Qt = QtCore.Qt
+from forrin.translator import _
 
 from qdex.pokemonmodel import PokemonModel, PokemonNameColumn, PokemonTypeColumn
 from qdex.querymodel import QueryModel, SimpleModelColumn
@@ -77,7 +78,7 @@ class QueryItem(MetamodelItem):
             return self._model
         except AttributeError:
             self._model = QueryModel(self.g, self.g.session.query(self.kwargs['table']), [
-                    SimpleModelColumn('id'), SimpleModelColumn('name'),
+                    SimpleModelColumn('id'), SimpleModelColumn('name', name=_('Name')),
                 ])
         return self._model
 

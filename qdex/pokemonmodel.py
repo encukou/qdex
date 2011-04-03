@@ -10,6 +10,7 @@ from sqlalchemy.orm import contains_eager, lazyload
 
 from PySide import QtCore, QtGui
 Qt = QtCore.Qt
+from forrin.translator import _
 
 from pokedex.db import tables, media
 
@@ -88,7 +89,7 @@ class PokemonNameColumn(PokemonColumn):
     delegate = PokemonNameDelegate
 
     def __init__(self, **kwargs):
-        super(PokemonNameColumn, self).__init__(name='Name', **kwargs)
+        super(PokemonNameColumn, self).__init__(name=_('Name'), **kwargs)
 
     def data(self, form, index, role):
         if role == Qt.DisplayRole:
@@ -128,11 +129,12 @@ class PokemonTypeColumn(PokemonColumn):
     """Display the pokémon type/s"""
     collapsing = 2
     def __init__(self, **kwargs):
-        super(PokemonTypeColumn, self).__init__(name='Type', **kwargs)
+        super(PokemonTypeColumn, self).__init__(name=_('Type'), **kwargs)
 
     def data(self, form, index, role):
         if role == Qt.DisplayRole:
-            return '/'.join(t.name for t in form.pokemon.types)
+            g = index.model().g
+            return '/'.join(g.name(t) for t in form.pokemon.types)
         elif role == Qt.UserRole:
             return form.pokemon.types
 
@@ -149,8 +151,9 @@ class PokemonTypeColumn(PokemonColumn):
                 commonTypes.append(None)
             return commonTypes
         elif role == Qt.DisplayRole:
+            g = index.model().g
             types = self.collapsedData(forms, index)
-            return '/'.join(t.name if t else '...' for t in types)
+            return '/'.join(g.name(t) if t else '...' for t in types)
         else:
             return self.data(forms[0], index, role)
 
