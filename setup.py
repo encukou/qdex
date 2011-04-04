@@ -15,8 +15,14 @@ setup(
     zip_safe = False,
 
     entry_points = {
-        'console_scripts': [
-            'qdex = qdex:main',
-        ],
-    },
+            'console_scripts': [
+                    'qdex = qdex:main',
+                ],
+        },
+
+    message_extractors = {
+            'qdex': [
+                    ('**.py', 'forrin', None),
+                ],
+        },
 )
