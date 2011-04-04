@@ -12,8 +12,8 @@ from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 from forrin.translator import _
 
-from qdex.pokemonmodel import PokemonModel, PokemonNameColumn, PokemonTypeColumn
-from qdex.querymodel import QueryModel, SimpleModelColumn
+from qdex.querymodel import QueryModel, PokemonModel
+from qdex.column import SimpleModelColumn, PokemonNameColumn, PokemonTypeColumn
 
 from pokedex.db import tables
 
