@@ -11,6 +11,8 @@ Qt = QtCore.Qt
 from sqlalchemy.orm import contains_eager, lazyload
 from pokedex.db import tables
 
+from qdex.column import ModelColumn
+
 class QueryModel(QtCore.QAbstractItemModel):
     """A model that displays an ORM query, with a set of custom columns.
 
@@ -24,7 +26,7 @@ class QueryModel(QtCore.QAbstractItemModel):
         self.g = g
         self.g.registerRetranslate(self.allDataChanged)
         self.baseQuery = query
-        self.columns = columns
+        self.columns = [ModelColumn.load(column) for column in columns]
         self.filters = []
         self._setQuery()
 

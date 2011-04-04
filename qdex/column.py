@@ -9,7 +9,6 @@ A query models for pokémon
 from PySide import QtGui, QtCore
 Qt = QtCore.Qt
 
-from forrin.translator import _
 from pokedex.db import media
 
 from qdex.delegate import PokemonDelegate, PokemonNameDelegate
@@ -21,12 +20,22 @@ class ModelColumnMetaclass(type):
     """
     def __init__(cls, *args):
         super(ModelColumnMetaclass, cls).__init__(*args)
-        availableColumns[cls.__name__] = cls
+        assert cls.classname not in availableColumns, (
+                'Column name %s is already taken' % cls.classname
+            )
+        availableColumns[cls.classname] = cls
+
+    @property
+    def classname(cls):
+        """Return this column's class name, a key for availableColumns
+        """
+        return cls.__name__
 
 class ModelColumn(object):
     """A column in a query model
     """
     __metaclass__ = ModelColumnMetaclass
+    _is_qdex_column = True
 
     def __init__(self, name):
         self.name = name
@@ -54,6 +63,38 @@ class ModelColumn(object):
             if role == Qt.DisplayRole:
                 return '...'
 
+    def save(self):
+        """Return a "safe-YAML-able" representation of this column
+
+        See SimpleModelColumn for an example of how to extend this.
+        """
+        return {
+                'class': self.classname,
+                'name': self.name,
+            }
+
+    @staticmethod
+    def load(representation):
+        """Load a column from a representation
+
+        The representation can either be something returned from save(),
+        or an existing column object (in which case it's just returned).
+        """
+        try:
+            # Copy the dict, since we'll be modifying it
+            representation = dict(representation)
+        except TypeError:
+            # Oops, not a dict. Must be a column object then
+            assert representation._is_qdex_column
+            return representation
+        else:
+            try:
+                cls = availableColumns[representation.pop('class')]
+            except KeyError:
+                # Make it easier to embed literal column descriptions
+                cls = availableColumns[representation.pop('class_')]
+            return cls(**representation)
+
 class SimpleModelColumn(ModelColumn):
     """A pretty dumb column that just gets an attribute and displays it
     """
@@ -67,12 +108,14 @@ class SimpleModelColumn(ModelColumn):
         if role == Qt.DisplayRole:
             return getattr(item, self.attr)
 
+    def save(self):
+        representation = super(SimpleModelColumn, self).save()
+        representation['attr'] = self.attr
+        return representation
+
 class PokemonNameColumn(ModelColumn):
     """Display the pokémon name & icon"""
     delegate = PokemonDelegate
-
-    def __init__(self, **kwargs):
-        super(PokemonNameColumn, self).__init__(name=_('Name'), **kwargs)
 
     def data(self, form, index, role):
         if role == Qt.DisplayRole:
@@ -111,9 +154,6 @@ class PokemonNameColumn(ModelColumn):
 class PokemonTypeColumn(ModelColumn):
     """Display the pokémon type/s"""
     delegate = PokemonNameDelegate
-
-    def __init__(self, **kwargs):
-        super(PokemonTypeColumn, self).__init__(name=_('Type'), **kwargs)
 
     def data(self, form, index, role):
         if role == Qt.DisplayRole:

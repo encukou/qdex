@@ -50,7 +50,7 @@ class MetamodelItem(object):
         For Qt.UserRole return self
         """
         if role == Qt.DisplayRole:
-            return self.name
+            return self.g.translator(self.name)
         elif role == Qt.DecorationRole:
             return self.icon
         elif role == Qt.UserRole:
@@ -65,7 +65,7 @@ class PokemonItem(MetamodelItem):
             return self._model
         except AttributeError:
             self._model = PokemonModel(self.g, [
-                    PokemonNameColumn(), PokemonTypeColumn(),
+                    dict(class_='PokemonNameColumn', name=_(u'Pokémon', context='pokemon column name')), dict(class_='PokemonTypeColumn', name=_(u'Type', context='pokemon column name')),
                 ])
         return self._model
 
@@ -78,7 +78,7 @@ class QueryItem(MetamodelItem):
             return self._model
         except AttributeError:
             self._model = QueryModel(self.g, self.g.session.query(self.kwargs['table']), [
-                    SimpleModelColumn('id'), SimpleModelColumn('name', name=_('Name')),
+                    dict(class_='SimpleModelColumn', attr='id'), dict(class_='SimpleModelColumn', attr='name'),
                 ])
         return self._model
 
@@ -104,13 +104,13 @@ class MetaModel(QtCore.QAbstractItemModel):
         nature_icon = QtGui.QIcon(resource_filename('qdex',
                 u'icons/smiley-cool.png'))
         self.root = MetamodelItem('_root', children=[
-                MetamodelItem('Standard lists', icon=folder_icon, children=[
-                        PokemonItem(u'Pokémon', icon=pokemon_icon, g=g),
-                        QueryItem(u'Moves', icon=move_icon, g=g, table=tables.Move),
-                        QueryItem(u'Types', icon=type_icon, g=g, table=tables.Type),
-                        QueryItem(u'Abilities', icon=ability_icon, g=g, table=tables.Ability),
-                        QueryItem(u'Items', icon=item_icon, g=g, table=tables.Item),
-                        QueryItem(u'Natures', icon=nature_icon, g=g, table=tables.Nature),
+                MetamodelItem(_(u'Standard lists'), icon=folder_icon, children=[
+                        PokemonItem(_(u'Pokémon'), icon=pokemon_icon, g=g),
+                        QueryItem(_(u'Moves'), icon=move_icon, g=g, table=tables.Move),
+                        QueryItem(_(u'Types'), icon=type_icon, g=g, table=tables.Type),
+                        QueryItem(_(u'Abilities'), icon=ability_icon, g=g, table=tables.Ability),
+                        QueryItem(_(u'Items'), icon=item_icon, g=g, table=tables.Item),
+                        QueryItem(_(u'Natures'), icon=nature_icon, g=g, table=tables.Nature),
                     ]),
             ])
         # XXX: Only have one category of lists now; show a flat list
