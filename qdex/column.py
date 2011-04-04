@@ -12,30 +12,12 @@ Qt = QtCore.Qt
 from pokedex.db import media
 
 from qdex.delegate import PokemonDelegate, PokemonNameDelegate
-
-availableColumns = {}
-
-class ModelColumnMetaclass(type):
-    """Metaclass to automatically register columns in availableColumns by name
-    """
-    def __init__(cls, *args):
-        super(ModelColumnMetaclass, cls).__init__(*args)
-        assert cls.classname not in availableColumns, (
-                'Column name %s is already taken' % cls.classname
-            )
-        availableColumns[cls.classname] = cls
-
-    @property
-    def classname(cls):
-        """Return this column's class name, a key for availableColumns
-        """
-        return cls.__name__
+from qdex.loadableclass import LoadableMetaclass
 
 class ModelColumn(object):
     """A column in a query model
     """
-    __metaclass__ = ModelColumnMetaclass
-    _is_qdex_column = True
+    __metaclass__ = LoadableMetaclass
 
     def __init__(self, name):
         self.name = name
@@ -64,36 +46,8 @@ class ModelColumn(object):
                 return '...'
 
     def save(self):
-        """Return a "safe-YAML-able" representation of this column
-
-        See SimpleModelColumn for an example of how to extend this.
-        """
-        return {
-                'class': self.classname,
-                'name': self.name,
-            }
-
-    @staticmethod
-    def load(representation):
-        """Load a column from a representation
-
-        The representation can either be something returned from save(),
-        or an existing column object (in which case it's just returned).
-        """
-        try:
-            # Copy the dict, since we'll be modifying it
-            representation = dict(representation)
-        except TypeError:
-            # Oops, not a dict. Must be a column object then
-            assert representation._is_qdex_column
-            return representation
-        else:
-            try:
-                cls = availableColumns[representation.pop('class')]
-            except KeyError:
-                # Make it easier to embed literal column descriptions
-                cls = availableColumns[representation.pop('class_')]
-            return cls(**representation)
+        """Return __init__ kwargs needed to reconstruct self"""
+        return dict(name=self.name)
 
 class SimpleModelColumn(ModelColumn):
     """A pretty dumb column that just gets an attribute and displays it

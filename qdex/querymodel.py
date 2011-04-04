@@ -12,17 +12,23 @@ from sqlalchemy.orm import contains_eager, lazyload
 from pokedex.db import tables
 
 from qdex.column import ModelColumn
+from qdex.loadableclass import LoadableMetaclass
 
-class QueryModel(QtCore.QAbstractItemModel):
+class ModelMetaclass(LoadableMetaclass, type(QtCore.QAbstractItemModel)):
+    """Merged metaclass"""
+    pass
+
+class BaseQueryModel(QtCore.QAbstractItemModel):
     """A model that displays an ORM query, with a set of custom columns.
 
     Can be queried the Python way, (with []).
     """
     collapsingPossible = False
     _pagesize = 100
+    __metaclass__ = ModelMetaclass
 
     def __init__(self, g, query, columns):
-        super(QueryModel, self).__init__()
+        super(BaseQueryModel, self).__init__()
         self.g = g
         self.g.registerRetranslate(self.allDataChanged)
         self.baseQuery = query
@@ -85,8 +91,33 @@ class QueryModel(QtCore.QAbstractItemModel):
     def parent(self, index):
         return QtCore.QModelIndex()
 
+    def save(self):
+        """Can't save a query directly"""
+        raise AssertionError("Can't save a BaseQueryModel")
 
-class PokemonModel(QueryModel):
+class TableModel(BaseQueryModel):
+    """Model that displays a DB table"""
+    def __init__(self, g, table, columns):
+        if isinstance(table, basestring):
+            tableName = table
+            for cls in tables.mapped_classes:
+                if cls.__name__ == tableName:
+                    break
+            else:
+                raise AssertionError('%s is not a valid table name' % tableName)
+        else:
+            tableName = table.__name__
+        self.tableName = tableName
+        query = g.session.query(cls)
+        super(TableModel, self).__init__(g, query, columns)
+
+    def save(self):
+        return dict(
+                table=self.tableName,
+                columns=[column.save() for column in self.columns],
+            )
+
+class PokemonModel(BaseQueryModel):
     """Pokémon query model
 
     Argh, forms >:/
@@ -194,3 +225,8 @@ class PokemonModel(QueryModel):
             else:
                 key = self.collapseKey(self.items[iid])
                 return self.collapsed[key][index.row()]
+
+    def save(self):
+        return dict(
+                columns=[column.save() for column in self.columns],
+            )

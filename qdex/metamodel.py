@@ -12,7 +12,7 @@ from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 from forrin.translator import _
 
-from qdex.querymodel import QueryModel, PokemonModel
+from qdex.querymodel import TableModel, PokemonModel
 from qdex.column import SimpleModelColumn, PokemonNameColumn, PokemonTypeColumn
 
 from pokedex.db import tables
@@ -64,9 +64,16 @@ class PokemonItem(MetamodelItem):
         try:
             return self._model
         except AttributeError:
-            self._model = PokemonModel(self.g, [
-                    dict(class_='PokemonNameColumn', name=_(u'Pokémon', context='pokemon column name')), dict(class_='PokemonTypeColumn', name=_(u'Type', context='pokemon column name')),
-                ])
+            self._model = TableModel.load(
+                    dict(
+                            class_='PokemonModel',
+                            columns=[
+                                    dict(class_='PokemonNameColumn', name=_(u'Pokémon', context='pokemon column name')),
+                                    dict(class_='PokemonTypeColumn', name=_(u'Type', context='pokemon column name')),
+                                ]
+                        ),
+                        g=self.g,
+                )
         return self._model
 
 class QueryItem(MetamodelItem):
@@ -77,9 +84,17 @@ class QueryItem(MetamodelItem):
         try:
             return self._model
         except AttributeError:
-            self._model = QueryModel(self.g, self.g.session.query(self.kwargs['table']), [
-                    dict(class_='SimpleModelColumn', attr='id'), dict(class_='SimpleModelColumn', attr='name'),
-                ])
+            self._model = TableModel.load(
+                    dict(
+                            class_='TableModel',
+                            table=self.kwargs['table'],
+                            columns=[
+                                    dict(class_='SimpleModelColumn', attr='id'),
+                                    dict(class_='SimpleModelColumn', attr='name'),
+                                ]
+                        ),
+                    g=self.g,
+                )
         return self._model
 
 class MetaModel(QtCore.QAbstractItemModel):
@@ -106,11 +121,11 @@ class MetaModel(QtCore.QAbstractItemModel):
         self.root = MetamodelItem('_root', children=[
                 MetamodelItem(_(u'Standard lists'), icon=folder_icon, children=[
                         PokemonItem(_(u'Pokémon'), icon=pokemon_icon, g=g),
-                        QueryItem(_(u'Moves'), icon=move_icon, g=g, table=tables.Move),
-                        QueryItem(_(u'Types'), icon=type_icon, g=g, table=tables.Type),
-                        QueryItem(_(u'Abilities'), icon=ability_icon, g=g, table=tables.Ability),
-                        QueryItem(_(u'Items'), icon=item_icon, g=g, table=tables.Item),
-                        QueryItem(_(u'Natures'), icon=nature_icon, g=g, table=tables.Nature),
+                        QueryItem(_(u'Moves'), icon=move_icon, g=g, table='Move'),
+                        QueryItem(_(u'Types'), icon=type_icon, g=g, table='Type'),
+                        QueryItem(_(u'Abilities'), icon=ability_icon, g=g, table='Ability'),
+                        QueryItem(_(u'Items'), icon=item_icon, g=g, table='Item'),
+                        QueryItem(_(u'Natures'), icon=nature_icon, g=g, table='Nature'),
                     ]),
             ])
         # XXX: Only have one category of lists now; show a flat list
