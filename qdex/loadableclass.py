@@ -12,20 +12,16 @@ class LoadableMetaclass(type):
 
     Gives classNameForLoad as the class name.
     """
-    def __init__(self, *args, **kwargs):
-        super(LoadableMetaclass, self).__init__(*args, **kwargs)
+    def __init__(self, name, bases, dct):
+        super(LoadableMetaclass, self).__init__(name, bases, dct)
+        if 'classNameForLoad' not in dct:
+            self.classNameForLoad = name
         try:
             register = self.registerForLoad
         except AttributeError:
             loadable(self)
             register = self.registerForLoad
         register(self)
-
-    @property
-    def classNameForLoad(cls):
-        """Return this column's class name, a key for availableColumns
-        """
-        return cls.__name__
 
 def loadable(cls):
     """Decorator for loadable classes.
@@ -82,8 +78,8 @@ def loadable(cls):
         everything we need.
 
         The 'class_' key can be used as a fallback to 'class', to make
-        it easier to write the loadable dicts in Python code. It's ignored if
-        the representation has 'class', as it should.
+        it easier to write the loadable dicts in Python code. If neither class
+        not class is specified, defaultClassForLoad is loaded.
         """
         try:
             # Copy the dict, since we'll be modifying it
@@ -94,12 +90,24 @@ def loadable(cls):
             return representation
         else:
             try:
-                cls = availableClasses[representation.pop('class')]
+                subclass = availableClasses[representation.pop('class')]
             except KeyError:
                 # Make it easier to embed literal column descriptions
-                cls = availableClasses[representation.pop('class_')]
+                try:
+                    subclass = availableClasses[representation.pop('class_')]
+                except KeyError:
+                    try:
+                        subclass = cls.defaultClassForLoad
+                    except AttributeError:
+                        print 'Error loading:', representation
+                        raise
             extraKwargs.update(representation)
-            return cls(**extraKwargs)
+            try:
+                return subclass(**extraKwargs)
+            except:
+                print 'Error loading:', representation
+                print 'Class:', subclass
+                raise
     cls.load = staticmethod(load)
 
     return cls

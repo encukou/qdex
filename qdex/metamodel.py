@@ -12,10 +12,9 @@ from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 from forrin.translator import _
 
-from qdex.querymodel import TableModel, PokemonModel
-from qdex.column import SimpleModelColumn, PokemonNameColumn, PokemonTypeColumn
+from qdex.querymodel import TableModel
+from qdex.loadableclass import LoadableMetaclass
 
-from pokedex.db import tables
 
 # XXX: Move the default contents somewhere else
 
@@ -32,15 +31,25 @@ def MetaModelView(parent=None):
 class MetamodelItem(object):
     """Item for the metamodel
     """
+    __metaclass__ = LoadableMetaclass
+
     model = None
 
-    def __init__(self, name, icon=None, children=None, g=None, **kwargs):
+    def __init__(self, name, icon=None, children=(), g=None, model=None):
         self.parent = None
         self.icon = icon
+        if isinstance(icon, basestring):
+            self._icon = QtGui.QIcon(icon)
+        elif isinstance(icon, list):
+            self._icon = QtGui.QIcon(resource_filename(*icon))
+        else:
+            #raise AssertionError("Can't set icon directly")
+            self._icon = icon
         self.name = name
         self.g = g
-        self.children = children or []
-        self.kwargs = kwargs
+        self.children = [MetamodelItem.load(child, g=g) for child in children]
+        if model:
+            self.model = TableModel.load(model, g=g)
         for child in self.children:
             child.parent = self
 
@@ -52,50 +61,19 @@ class MetamodelItem(object):
         if role == Qt.DisplayRole:
             return self.g.translator(self.name)
         elif role == Qt.DecorationRole:
-            return self.icon
+            return self._icon
         elif role == Qt.UserRole:
             return self
 
-class PokemonItem(MetamodelItem):
-    """Item for the pokémon list
-    """
-    @property
-    def model(self):
-        try:
-            return self._model
-        except AttributeError:
-            self._model = TableModel.load(
-                    dict(
-                            class_='PokemonModel',
-                            columns=[
-                                    dict(class_='PokemonNameColumn', name=_(u'Pokémon', context='pokemon column name')),
-                                    dict(class_='PokemonTypeColumn', name=_(u'Type', context='pokemon column name')),
-                                ]
-                        ),
-                        g=self.g,
-                )
-        return self._model
-
-class QueryItem(MetamodelItem):
-    """Item for a query list
-    """
-    @property
-    def model(self):
-        try:
-            return self._model
-        except AttributeError:
-            self._model = TableModel.load(
-                    dict(
-                            class_='TableModel',
-                            table=self.kwargs['table'],
-                            columns=[
-                                    dict(class_='SimpleModelColumn', attr='id'),
-                                    dict(class_='SimpleModelColumn', attr='name'),
-                                ]
-                        ),
-                    g=self.g,
-                )
-        return self._model
+    def save(self):
+        """Save to dict"""
+        return dict(
+                name=self.name,
+                icon=self.icon,
+                children=[child.save() for child in children],
+                model=None if self.model is None else self.model.save(),
+            )
+MetamodelItem.defaultClassForLoad = MetamodelItem
 
 class MetaModel(QtCore.QAbstractItemModel):
     """A model containing shortcuts to models the pokédex can display
@@ -104,30 +82,41 @@ class MetaModel(QtCore.QAbstractItemModel):
         super(MetaModel, self).__init__()
         self.g = g
         # XXX: Need better icons!!!
-        folder_icon = QtGui.QIcon(resource_filename('qdex',
-                'icons/folder-horizontal.png'))
-        pokemon_icon = QtGui.QIcon(resource_filename('pokedex',
-                u'data/media/items/poké-ball.png'))
-        move_icon = QtGui.QIcon(resource_filename('pokedex',
-                u'data/media/items/tm-normal.png'))
-        type_icon = QtGui.QIcon(resource_filename('qdex',
-                u'icons/diamond.png'))
-        ability_icon = QtGui.QIcon(resource_filename('qdex',
-                u'icons/color.png'))
-        item_icon = QtGui.QIcon(resource_filename('pokedex',
-                u'data/media/items/rare-candy.png'))
-        nature_icon = QtGui.QIcon(resource_filename('qdex',
-                u'icons/smiley-cool.png'))
-        self.root = MetamodelItem('_root', children=[
-                MetamodelItem(_(u'Standard lists'), icon=folder_icon, children=[
-                        PokemonItem(_(u'Pokémon'), icon=pokemon_icon, g=g),
-                        QueryItem(_(u'Moves'), icon=move_icon, g=g, table='Move'),
-                        QueryItem(_(u'Types'), icon=type_icon, g=g, table='Type'),
-                        QueryItem(_(u'Abilities'), icon=ability_icon, g=g, table='Ability'),
-                        QueryItem(_(u'Items'), icon=item_icon, g=g, table='Item'),
-                        QueryItem(_(u'Natures'), icon=nature_icon, g=g, table='Nature'),
+        folder_icon = ['qdex', 'icons/folder-horizontal.png']
+        pokemon_icon = ['pokedex', u'data/media/items/poké-ball.png']
+        move_icon = ['pokedex', u'data/media/items/tm-normal.png']
+        type_icon = ['qdex', u'icons/diamond.png']
+        ability_icon = ['qdex', u'icons/color.png']
+        item_icon = ['pokedex', u'data/media/items/rare-candy.png']
+        nature_icon = ['qdex', u'icons/smiley-cool.png']
+        def pokemonModelDict():
+            return dict(
+                class_='PokemonModel',
+                columns=[
+                    dict(class_='PokemonNameColumn', name=_(u'Pokémon', context='pokemon column name')),
+                    dict(class_='PokemonTypeColumn', name=_(u'Type', context='pokemon column name')),
+                ]
+            )
+        def tableModelDict(table):
+            return dict(
+                    class_='TableModel',
+                    table=table,
+                    columns=[
+                            dict(class_='SimpleModelColumn', attr='id'),
+                            dict(class_='SimpleModelColumn', attr='name'),
+                        ]
+                )
+        d = dict(name='_root', children=[
+                dict(name=_(u'Standard lists'), icon=folder_icon, children=[
+                        dict(name=_(u'Pokémon'), icon=pokemon_icon, model=pokemonModelDict()),
+                        dict(name=_(u'Moves'), icon=move_icon, model=tableModelDict('Move')),
+                        dict(name=_(u'Types'), icon=type_icon, model=tableModelDict('Type')),
+                        dict(name=_(u'Abilities'), icon=ability_icon, model=tableModelDict('Ability')),
+                        dict(name=_(u'Items'), icon=item_icon, model=tableModelDict('Item')),
+                        dict(name=_(u'Natures'), icon=nature_icon, model=tableModelDict('Nature')),
                     ]),
             ])
+        self.root = MetamodelItem.load(d, g=g)
         # XXX: Only have one category of lists now; show a flat list
         # (update defaultIndex when this changes)
         self.root = self.root.children[0]
