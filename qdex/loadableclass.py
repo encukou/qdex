@@ -76,10 +76,6 @@ def loadable(cls):
 
         Extra keyword arguments can be added, in case save() didn't quite save
         everything we need.
-
-        The 'class_' key can be used as a fallback to 'class', to make
-        it easier to write the loadable dicts in Python code. If neither class
-        not class is specified, defaultClassForLoad is loaded.
         """
         try:
             # Copy the dict, since we'll be modifying it
@@ -92,15 +88,11 @@ def loadable(cls):
             try:
                 subclass = availableClasses[representation.pop('class')]
             except KeyError:
-                # Make it easier to embed literal column descriptions
                 try:
-                    subclass = availableClasses[representation.pop('class_')]
-                except KeyError:
-                    try:
-                        subclass = cls.defaultClassForLoad
-                    except AttributeError:
-                        print 'Error loading:', representation
-                        raise
+                    subclass = cls.defaultClassForLoad
+                except AttributeError:
+                    print 'Error loading:', representation
+                    raise
             extraKwargs.update(representation)
             try:
                 return subclass(**extraKwargs)

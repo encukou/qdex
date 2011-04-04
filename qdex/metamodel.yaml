@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG ! tag:encukou.cz,2011:forrin/
+---
+name: _root
+children:
+-   name: !_ 'Standard lists'
+    icon: [qdex, icons/folder-horizontal.png]
+    children:
+    -   name: !_ {message: Pokémon, context: plural}
+        icon: [pokedex, data/media/items/poké-ball.png]
+        model:
+            class: PokemonModel
+            columns:
+            -   class: PokemonNameColumn
+                name: !_ {message: Pokémon, context: pokemon column name}
+            -   class: PokemonTypeColumn
+                name: !_ {message: Type, context: pokemon column name}
+    -   name: !_ 'Moves'
+        icon: [pokedex, data/media/items/tm-normal.png]
+        model:
+            class: TableModel
+            table: Move
+            columns:
+            -   name: !_ ID
+                attr: id
+                class: SimpleModelColumn
+            -   name: !_ Name
+                attr: name
+                class: SimpleModelColumn
+    -   name: !_ 'Types'
+        icon: [qdex, icons/diamond.png]
+        model:
+            class: TableModel
+            table: Type
+            columns:
+            -   name: !_ ID
+                attr: id
+                class: SimpleModelColumn
+            -   name: !_ Name
+                attr: name
+                class: SimpleModelColumn
+    -   name: !_ 'Abilities'
+        icon: [qdex, icons/color.png]
+        model:
+            class: TableModel
+            table: Ability
+            columns:
+            -   name: !_ ID
+                attr: id
+                class: SimpleModelColumn
+            -   name: !_ Name
+                attr: name
+                class: SimpleModelColumn
+    -   name: !_ 'Items'
+        icon: [pokedex, data/media/items/rare-candy.png]
+        model:
+            class: TableModel
+            table: Item
+            columns:
+            -   name: !_ ID
+                attr: id
+                class: SimpleModelColumn
+            -   name: !_ Name
+                attr: name
+                class: SimpleModelColumn
+    -   name: !_ 'Natures'
+        icon: [qdex, icons/smiley-cool.png]
+        model:
+            class: TableModel
+            table: Nature
+            columns:
+            -   name: !_ ID
+                attr: id
+                class: SimpleModelColumn
+            -   name: !_ Name
+                attr: name
+                class: SimpleModelColumn

@@ -10,11 +10,10 @@ from pkg_resources import resource_filename
 
 from PySide import QtCore, QtGui
 Qt = QtCore.Qt
-from forrin.translator import _
 
 from qdex.querymodel import TableModel
 from qdex.loadableclass import LoadableMetaclass
-
+from qdex import yaml
 
 # XXX: Move the default contents somewhere else
 
@@ -70,7 +69,7 @@ class MetamodelItem(object):
         return dict(
                 name=self.name,
                 icon=self.icon,
-                children=[child.save() for child in children],
+                children=[child.save() for child in self.children],
                 model=None if self.model is None else self.model.save(),
             )
 MetamodelItem.defaultClassForLoad = MetamodelItem
@@ -78,47 +77,14 @@ MetamodelItem.defaultClassForLoad = MetamodelItem
 class MetaModel(QtCore.QAbstractItemModel):
     """A model containing shortcuts to models the pokédex can display
     """
-    def __init__(self, g):
+    def __init__(self, g, model=None):
         super(MetaModel, self).__init__()
         self.g = g
-        # XXX: Need better icons!!!
-        folder_icon = ['qdex', 'icons/folder-horizontal.png']
-        pokemon_icon = ['pokedex', u'data/media/items/poké-ball.png']
-        move_icon = ['pokedex', u'data/media/items/tm-normal.png']
-        type_icon = ['qdex', u'icons/diamond.png']
-        ability_icon = ['qdex', u'icons/color.png']
-        item_icon = ['pokedex', u'data/media/items/rare-candy.png']
-        nature_icon = ['qdex', u'icons/smiley-cool.png']
-        def pokemonModelDict():
-            return dict(
-                class_='PokemonModel',
-                columns=[
-                    dict(class_='PokemonNameColumn', name=_(u'Pokémon', context='pokemon column name')),
-                    dict(class_='PokemonTypeColumn', name=_(u'Type', context='pokemon column name')),
-                ]
-            )
-        def tableModelDict(table):
-            return dict(
-                    class_='TableModel',
-                    table=table,
-                    columns=[
-                            dict(class_='SimpleModelColumn', attr='id'),
-                            dict(class_='SimpleModelColumn', attr='name'),
-                        ]
-                )
-        d = dict(name='_root', children=[
-                dict(name=_(u'Standard lists'), icon=folder_icon, children=[
-                        dict(name=_(u'Pokémon'), icon=pokemon_icon, model=pokemonModelDict()),
-                        dict(name=_(u'Moves'), icon=move_icon, model=tableModelDict('Move')),
-                        dict(name=_(u'Types'), icon=type_icon, model=tableModelDict('Type')),
-                        dict(name=_(u'Abilities'), icon=ability_icon, model=tableModelDict('Ability')),
-                        dict(name=_(u'Items'), icon=item_icon, model=tableModelDict('Item')),
-                        dict(name=_(u'Natures'), icon=nature_icon, model=tableModelDict('Nature')),
-                    ]),
-            ])
-        self.root = MetamodelItem.load(d, g=g)
+        if model is None:
+            defaultfile = open(resource_filename('qdex', 'metamodel.yaml'))
+            model = yaml.load(defaultfile)
+        self.root = MetamodelItem.load(model, g=g)
         # XXX: Only have one category of lists now; show a flat list
-        # (update defaultIndex when this changes)
         self.root = self.root.children[0]
 
     def columnCount(self, parent=QtCore.QModelIndex()):

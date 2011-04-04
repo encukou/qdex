@@ -7,6 +7,7 @@ setup(
     install_requires = [
         'pokedex',
         'forrin',
+        'pyyaml>=3.0',
         'PySide>=1.0',
     ],
 
@@ -18,11 +19,15 @@ setup(
             'console_scripts': [
                     'qdex = qdex:main',
                 ],
+            'babel.extractors': [
+                    'forrin-yaml = qdex.yaml:extractMessages',
+                ]
         },
 
     message_extractors = {
             'qdex': [
                     ('**.py', 'forrin', None),
+                    ('**.yaml', 'forrin-yaml', None),
                 ],
         },
 )
