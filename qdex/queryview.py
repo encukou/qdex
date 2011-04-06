@@ -9,6 +9,8 @@ Views for displaying the query models
 from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 
+from qdex.columngroup import defaultColumnGroups, buildColumnMenu
+
 class QueryView(QtGui.QTreeView):
     """A tree-view for displaying query models.
 
@@ -22,9 +24,14 @@ class QueryView(QtGui.QTreeView):
         self.setIndentation(0)
         self.setRootIsDecorated(False)
 
+        self.header().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.header().customContextMenuRequested.connect(
+                self.showHeaderContextMenu)
+
     def setModel(self, model):
         if self.model():
             self.model().disconnect(self)
+        self.g = model.g
         super(QueryView, self).setModel(model)
         self.connect(QtCore.SIGNAL('columnsInserted'), self.columnsChanged)
         self.connect(QtCore.SIGNAL('columnsDeleted'), self.columnsChanged)
@@ -50,5 +57,25 @@ class QueryView(QtGui.QTreeView):
         for i, delegate in enumerate(self.delegates):
             self.setItemDelegateForColumn(i, delegate)
 
-
+    def showHeaderContextMenu(self, pos):
+        """Show a context menu when the header is right-clicked"""
+        _ = self.g.translator
+        model = self.model()
+        menu = QtGui.QMenu()
+        columnIndex = self.columnAt(pos.x())
+        try:
+            column = model.columns[columnIndex]
+        except IndexError:
+            pass
+        else:
+            name = column.headerData(Qt.DisplayRole, self.model())
+            action = menu.addAction(_(u'Remove column {0}').format(name))
+            action.triggered.connect(lambda: model.removeColumn(columnIndex))
+            menu.addSeparator()
+        # XXX: Move the table's column groups to the model
+        group = defaultColumnGroups.get(model.tableName)
+        if group:
+            buildColumnMenu(self.g, menu, group, _(u'Add {0} Column'),
+                lambda column: lambda: model.insertColumn(columnIndex, column))
+        menu.exec_(self.header().mapToGlobal(pos))
 

@@ -21,7 +21,8 @@ class LoadableMetaclass(type):
         except AttributeError:
             loadable(self)
             register = self.registerForLoad
-        register(self)
+        if self.classNameForLoad is not None:
+            register(self)
 
 def loadable(cls):
     """Decorator for loadable classes.
@@ -41,7 +42,7 @@ def loadable(cls):
     The save method will be auto-decorated so the dict includes a 'class'
     entry.
     """
-    availableClasses = {}
+    availableClasses = cls.availableClassesForLoad = {}
 
     def registerForLoad(registeredClass):
         """Register the given class for load()"""
@@ -77,22 +78,29 @@ def loadable(cls):
         Extra keyword arguments can be added, in case save() didn't quite save
         everything we need.
         """
+        # XXX: Too much magic!
         try:
             # Copy the dict, since we'll be modifying it
-            representation = dict(representation)
+            try:
+                representation = dict(representation)
+            except:
+                print 'Error loading:', representation
+                raise
         except TypeError:
             # Oops, not a dict. Must be a loadable object already
             assert representation.classNameForLoad
             return representation
         else:
             try:
-                subclass = availableClasses[representation.pop('class')]
+                classname = representation.pop('class')
             except KeyError:
                 try:
                     subclass = cls.defaultClassForLoad
                 except AttributeError:
                     print 'Error loading:', representation
                     raise
+            else:
+                subclass = cls.resolveClassName(classname)
             extraKwargs.update(representation)
             try:
                 return subclass(**extraKwargs)
@@ -101,5 +109,12 @@ def loadable(cls):
                 print 'Class:', subclass
                 raise
     cls.load = staticmethod(load)
+
+    @classmethod
+    def resolveClassName(self, classname):
+        """Resolves the given class name as an entry in availableClasses"""
+        return availableClasses[classname]
+    if not hasattr(cls, 'resolveClassName'):
+        cls.resolveClassName = resolveClassName
 
     return cls

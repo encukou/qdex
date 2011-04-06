@@ -1,0 +1,168 @@
+%YAML 1.1
+%TAG ! tag:encukou.cz,2011:forrin/
+---
+Pokemon:
+    #model: PokemonQueryModel
+    columns:
+    -   name: !_ Base
+        class: ColumnGroup
+        columns:
+        -   name: !_ Pokémon
+            identifier: pokemon
+            class: PokemonNameColumn
+        -   name: !_ Type
+            identifier: types
+            class: PokemonTypeColumn
+        -   ---
+        -   name: !_ Abilities
+            class: PokemonAbilityColumn
+            slots: [1, 2]
+        -   name: !_ Dream Ability
+            class: PokemonAbilityColumn
+            slots: [3]
+        -   name: !_ All Abilities
+            class: PokemonAbilityColumn
+            slots: [1, 2, 3]
+    -   name: !_ Battler's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Base Stats
+            identifier: base-stats
+            class: PokemonBaseStatColumn
+            stat: [hp, attack, defense, speed, special-attack, special-defense]
+        -   name: !_ Base Stat Total
+            class: PokemonBaseStatColumn
+            stat: total
+        -   name: !_ Stat Percentile
+            class: PokemonStatPercentileColumn
+            stat: total
+        -   name: !_ Individual Stats & Effort
+            class: PokemonStatColumnGroup
+        -   name: !_ Tier
+            class: PokemonTierColumnGroup
+        -   name: !_ Type effectivity
+            class: PokemonTypeColumnGroup
+        -   name: !_ Learnable moves
+            class: PokemonLearnableMovesColumnGroup
+    -   name: !_ Professor's
+        class: ColumnGroup
+        columns:
+        -   name: !_ ID Numbers
+            class: PokemonIDColumnGroup
+        -   name: !_ Foreign Names
+            class: PokemonNameColumnGroup
+        -   name: !_ Generation
+            class: PokemonIntroducedInColumn
+    -   name: !_ Trainer's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Growth Rate
+            class: PokemonGrowthRateColumn
+        -   name: !_ EXP
+            class: ColumnGroup
+            columns:
+            -   name: !_ EXP to level 100
+                class: PokemonEXPNeededColumn
+                target-level: 100
+            -   name: !_ EXP to level ...
+                class: PokemonEXPNeededColumn
+            -   name: !_ Base EXP
+                class: PokemonColumn
+                attr: base_experience
+            -   name: !_ EXP Given
+                class: PokemonEXPGivenColumn
+    -   name: !_ Collector's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Capture Rate
+            class: PokemonNumberColumn
+        -   name: !_ Base Tameness
+            class: PokemonNumberColumn
+            attr: base_happiness
+        -   name: !_ Held Items
+            class: PokemonHeldItemsColumn
+        -   name: !_ Location Summary
+            class: PokemonLocationVersionsColumn
+        -   name: !_ Locations
+            class: PokemonLocationColumnGroup
+    -   name: !_ Breeder's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Gender rate
+            class: PokemonGenderColumn
+        -   name: !_ Egg groups
+            class: PokemonEggGroupColumn
+        -   name: !_ Initial Hatch Counter
+            class: PokemonNumberColumn
+            attr: hatch_counter
+        -   name: !_ Steps to hatch
+            class: PokemonStepsToHatchColumn
+            attr: hatch_counter
+        -   name: Breed Requirement
+            class: PokemonBreedMethodColumn
+    -   name: !_ {message: Evolution, context: column group}
+        class: ColumnGroup
+        columns:
+        -   name: Evolves from
+            class: PokemonPreEvolutionColumn
+        -   name: Evolution method
+            class: PokemonEvolutionMethodColumn
+        -   name: Stage Summary  # XXX: Don't forget is_baby!
+            class: PokemonEvolutionStageColumn
+        -   name: Next Stage(s)
+            class: PokemonPostEvolutionColumn
+    -   name: !_ Pokéfan's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Species  # XXX: Better name!
+            class: PokemonLocalizedColumn
+            attr: species_map
+            format: !_ "%s Pokémon"
+        -   name: !_ Pokédex Color
+            class: PokemonColorColumn
+        -   name: !_ Habitat
+            class: PokemonHabitatColumn
+        -   name: !_ Shape
+            class: PokemonShapeColumn
+        -   name: !_ Height & Weight
+            class: ColumnGroup
+            columns:
+            -   name: !_ Height (meters)
+                class: PokemonMeasurementColumn
+                attr: height
+                template: "%.1f m"
+                factors: [0.1]
+            -   name: !_ Weight (kilograms)
+                class: PokemonMeasurementColumn
+                attr: weight
+                template: "%.1f kg"
+                factors: [0.1]
+            -   ---
+            -   name: !_ Height (feet & inches)
+                class: PokemonMeasurementColumn
+                attr: height
+                template: "%d′%.1f″"
+                factors: [0.32808399, 12]
+            -   name: !_ Weight (pounds)
+                class: PokemonMeasurementColumn
+                attr: weight
+                units: ["%.1f lb"]
+                factors: [0.220462262]
+        -   name: !_ Pokéathlon Stats
+            class: PokemonPokeathlonColumnGroup
+        -   name: !_ Flavor Text
+            class: PokemonFlavorTextColumn
+Move:
+    columns: &defaultColumns
+    -   name: !_ ID
+        attr: id
+    -   name: !_ Name
+        attr: name
+Type:
+    columns: *defaultColumns
+Ability:
+    columns: *defaultColumns
+Item:
+    columns: *defaultColumns
+Nature:
+    columns: *defaultColumns

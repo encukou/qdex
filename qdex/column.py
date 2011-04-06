@@ -19,7 +19,7 @@ class ModelColumn(object):
     """
     __metaclass__ = LoadableMetaclass
 
-    def __init__(self, name):
+    def __init__(self, name, identifier=None):
         self.name = name
 
     def headerData(self, role, model):
@@ -66,6 +66,7 @@ class SimpleModelColumn(ModelColumn):
         representation = super(SimpleModelColumn, self).save()
         representation['attr'] = self.attr
         return representation
+ModelColumn.defaultClassForLoad = SimpleModelColumn
 
 class PokemonNameColumn(ModelColumn):
     """Display the pokémon name & icon"""

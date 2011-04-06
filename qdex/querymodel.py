@@ -142,6 +142,7 @@ class PokemonModel(BaseQueryModel):
         query = query.options(lazyload('form_base_pokemon.names'))
         query = query.order_by(tables.Pokemon.order, tables.PokemonForm.id)
         super(PokemonModel, self).__init__(g, query, columns)
+        self.tableName = 'Pokemon'
         self._hack_small_icons = False
 
     def _setQuery(self):
