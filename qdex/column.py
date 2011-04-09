@@ -89,13 +89,13 @@ class PokemonNameColumn(ModelColumn):
                 key = "flipped pokemon icon/%s" % form.id
                 pixmap = QtGui.QPixmap()
                 if not QtGui.QPixmapCache.find(key, pixmap):
-                    pixmap.load(form.media.icon().path)
+                    pixmap.load(media.PokemonFormMedia(form).icon().path)
                     transform = QtGui.QTransform.fromScale(-1, 1)
                     pixmap = pixmap.transformed(transform)
                     QtGui.QPixmapCache.insert(key, pixmap)
                 return pixmap
             except ValueError:
-                return QtGui.QPixmap(media.PokemonMediaById(0).icon().path)
+                return QtGui.QPixmap(media.UnknownPokemonMedia(0).icon().path)
 
     def collapsedData(self, forms, index, role):
         if role == Qt.DisplayRole:

@@ -7,7 +7,7 @@ children:
     icon: [qdex, icons/folder-horizontal.png]
     children:
     -   name: !_ {message: Pokémon, context: plural}
-        icon: [pokedex, data/media/items/poké-ball.png]
+        icon: [pokedex, data/media/items/poke-ball.png]
         model:
             class: PokemonModel
             columns:
