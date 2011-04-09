@@ -28,6 +28,13 @@ class QueryView(QtGui.QTreeView):
         self.header().customContextMenuRequested.connect(
                 self.showHeaderContextMenu)
 
+        # Enlarge (hopefully) the minimum column width to the size of
+        # a pokémon icon (with a tad of extra padding).
+        self.header().setMinimumSectionSize(max(
+                QtGui.QApplication.globalStrut().width(),
+                34,
+            ))
+
     def setModel(self, model):
         if self.model():
             self.model().disconnect(self)
