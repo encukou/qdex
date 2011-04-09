@@ -61,7 +61,7 @@ class ColumnMenuBuilder(ColumnGroupVisitor):
                 name = name
             action = menu.addAction(name)
         if columnGroup.columnClass:
-            action.triggered.connect(self.slotFactory(columnGroup.columnClass))
+            action.triggered.connect(self.slotFactory(columnGroup))
         action.setEnabled(columnGroup.enabled)
         self.lastAction = action
         return self
@@ -159,6 +159,10 @@ def columnFactory(columnClass):
                 super(ColumnFactory, self).__init__()
                 self.name = name
                 self.kwargs = kwargs
+
+            def getColumn(self):
+                """Get a new column from this factory"""
+                return self.columnClass(name=self.name, **self.kwargs)
 
         columnFactory.memo[columnClass] = ColumnFactory
         return ColumnFactory

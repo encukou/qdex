@@ -38,17 +38,25 @@ class QueryView(QtGui.QTreeView):
         self.connect(QtCore.SIGNAL('columnsMoved'), self.columnsChanged)
         self.connect(QtCore.SIGNAL('modelReset'), self.columnsChanged)
         self.columnsChanged()
-        options = self.viewOptions()
-        # XXX: Better initial size of columns?
-        lastRow = self.model().rowCount() - 1
         for i in range(self.model().columnCount()):
-            index = model.index(0, i)
-            delegate = self.itemDelegate(index)
-            width = max(
-                    delegate.sizeHint(options, idx).width()
-                    for idx in (index, model.index(lastRow, i))
-                ) * 3 / 2
-            self.setColumnWidth(i, width)
+            self.autoResizeColumn(i)
+
+    def autoResizeColumn(self, columnIndex):
+        """Resize the column with the given index to some reasonable size
+
+        The point is to not read all the data in the column
+        """
+        # XXX: Better initial size of columns?
+        model = self.model()
+        lastRow = self.model().rowCount() - 1
+        options = self.viewOptions()
+        index = model.index(0, columnIndex)
+        delegate = self.itemDelegate(index)
+        width = max(
+                delegate.sizeHint(options, idx).width()
+                for idx in (index, model.index(lastRow, columnIndex))
+            ) * 3 / 2
+        self.setColumnWidth(columnIndex, width)
 
     def columnsChanged(self):
         """Called when the columns change; re-assigns delegates
@@ -77,7 +85,18 @@ class QueryView(QtGui.QTreeView):
         # XXX: Move the table's column groups to the model
         group = defaultColumnGroups.get(model.tableName)
         if group:
+            def insertColumn(columnGroup):
+                """Insert the column from the given columnGroup"""
+                model.insertQueryColumn(
+                        columnIndex + 1,
+                        columnGroup.getColumn(),
+                    )
+                if columnIndex == self.model().columnCount() - 2:
+                    # We added a column after the last (stretchable) one.
+                    # Let's be helpful and stretch the ex-last column to some
+                    # reasonable size.
+                    self.autoResizeColumn(columnIndex)
             buildColumnMenu(self.g, menu, group, _(u'Add {0} Column'),
-                lambda column: lambda: model.insertColumn(columnIndex, column))
+                    lambda columnGroup: lambda: insertColumn(columnGroup))
         menu.exec_(self.header().mapToGlobal(pos))
 

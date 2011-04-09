@@ -109,6 +109,16 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             self.endRemoveColumns()
             return True
 
+    def insertQueryColumn(self, position, column):
+        """Insert a ModelColumn at the specified position
+
+        Qt's normal column-inserting API doesn't work: it doesn't specify
+        the column to be inserted.
+        """
+        self.beginInsertColumns(QtCore.QModelIndex(), position, position)
+        self.columns.insert(position, column)
+        self.endInsertColumns()
+
 class TableModel(BaseQueryModel):
     """Model that displays a DB table"""
     def __init__(self, g, table, columns):
