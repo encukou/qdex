@@ -158,8 +158,14 @@ Move:
         attr: id
     -   name: !_ Name
         attr: name
+        class: GameStringColumn
 Type:
-    columns: *defaultColumns
+    columns:
+    -   name: !_ ID
+        attr: id
+    -   name: !_ Name
+        attr: name
+        class: LocalStringColumn
 Ability:
     columns: *defaultColumns
 Item:

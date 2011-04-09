@@ -18,11 +18,12 @@ class QueryView(QtGui.QTreeView):
     column-specific delegates.
     """
     def __init__(self, *args):
-        super(QueryView, self).__init__(*args)
+        QtGui.QTreeView.__init__(self, *args)
         self.setUniformRowHeights(True)
         self.setAnimated(True)
         self.setIndentation(0)
         self.setRootIsDecorated(False)
+        self.setSortingEnabled(True)
 
         self.header().setContextMenuPolicy(Qt.CustomContextMenu)
         self.header().customContextMenuRequested.connect(
@@ -38,6 +39,13 @@ class QueryView(QtGui.QTreeView):
     def setModel(self, model):
         if self.model():
             self.model().disconnect(self)
+
+        # Qt remembers which column the view is sorted by, and tries to restore
+        # the sort. We don't want that, and neither do we want to un-sort the
+        # previous model, so set model to None and un-sort the view.
+        super(QueryView, self).setModel(None)
+        self.sortByColumn(-1, Qt.AscendingOrder)
+
         self.g = model.g
         super(QueryView, self).setModel(model)
         self.connect(QtCore.SIGNAL('columnsInserted'), self.columnsChanged)
@@ -96,7 +104,7 @@ class QueryView(QtGui.QTreeView):
                 """Insert the column from the given columnGroup"""
                 model.insertQueryColumn(
                         columnIndex + 1,
-                        columnGroup.getColumn(),
+                        columnGroup.getColumn(model=model),
                     )
                 if columnIndex == self.model().columnCount() - 2:
                     # We added a column after the last (stretchable) one.

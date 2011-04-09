@@ -6,13 +6,15 @@
 Query models
 """
 
-from PySide import QtCore
+from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 from sqlalchemy.orm import contains_eager, lazyload
 from pokedex.db import tables
+import traceback
 
 from qdex.column import ModelColumn
 from qdex.loadableclass import LoadableMetaclass
+from qdex.sortclause import DefaultPokemonSortClause
 
 class ModelMetaclass(LoadableMetaclass, type(QtCore.QAbstractItemModel)):
     """Merged metaclass"""
@@ -27,20 +29,34 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
     _pagesize = 100
     __metaclass__ = ModelMetaclass
 
-    def __init__(self, g, query, columns):
+    def __init__(self, g, mappedClass, query, columns, defaultSortClause=None):
         super(BaseQueryModel, self).__init__()
         self.g = g
+        self.mappedClass = mappedClass
         self.g.registerRetranslate(self.allDataChanged)
         self.baseQuery = query
-        self.columns = [ModelColumn.load(column) for column in columns]
+        self.columns = []
+        for column in columns:
+            try:
+                self.columns.append(ModelColumn.load(column, model=self))
+            except Exception:
+                traceback.print_exc()
+                print 'Failed to load column:', column
+        if defaultSortClause is None:
+            self.defaultSortClause = self.columns[0].getSortClause()
+        else:
+            self.defaultSortClause = defaultSortClause
+        self.sortClauses = [self.defaultSortClause]
         self.filters = []
         self._setQuery()
 
     def _setQuery(self):
         """Called every time the query changes"""
         self._query = self.baseQuery
+        for clause in reversed(self.sortClauses):
+            self._query = clause.sortedQuery(self._query)
         self._rows = int(self._query.count())
-        self.pages = [None] * (self._rows / self._pagesize + 1)
+        self.pages = [None] * (self._rows // self._pagesize + 1)
 
     def allDataChanged(self):
         """Called when all of the data is changed, e.g. retranslated"""
@@ -57,6 +73,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         if not page:
             start = pageno * self._pagesize
             end = (pageno + 1) * self._pagesize
+            print start, end
             page = self.pages[pageno] = self._query[start:end]
         return page[offset]
 
@@ -119,21 +136,44 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         self.columns.insert(position, column)
         self.endInsertColumns()
 
+    def sort(self, columnIndex, order=Qt.AscendingOrder):
+        newClauses = []
+        if columnIndex == -1:
+            pass
+        else:
+            column = self.columns[columnIndex]
+            descending = (order == Qt.DescendingOrder)
+            sortClause = column.getSortClause(descending=descending)
+            for clause in self.sortClauses:
+                if not sortClause.overrides(clause):
+                    newClauses.append(clause)
+            newClauses.append(sortClause)
+        if newClauses != self.sortClauses:
+            QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.WaitCursor))
+            try:
+                self.layoutAboutToBeChanged.emit()
+                self.sortClauses = newClauses
+                self._setQuery()
+                self.layoutChanged.emit()
+            finally:
+                QtGui.QApplication.restoreOverrideCursor()
+
 class TableModel(BaseQueryModel):
     """Model that displays a DB table"""
     def __init__(self, g, table, columns):
         if isinstance(table, basestring):
             tableName = table
             for cls in tables.mapped_classes:
-                if cls.__name__ == tableName:
+                if cls.__name__ == table:
                     break
             else:
                 raise AssertionError('%s is not a valid table name' % tableName)
         else:
             tableName = table.__name__
+            cls = table
         self.tableName = tableName
         query = g.session.query(cls)
-        super(TableModel, self).__init__(g, query, columns)
+        super(TableModel, self).__init__(g, cls, query, columns)
 
     def save(self):
         return dict(
@@ -158,20 +198,20 @@ class PokemonModel(BaseQueryModel):
     """
     _pagesize = 100
     def __init__(self, g, columns):
-        query = g.session.query(tables.PokemonForm)
+        mappedClass = tables.PokemonForm
+        query = g.session.query(mappedClass)
         query = query.join(
                 (tables.Pokemon, tables.PokemonForm.form_base_pokemon)
             )
         query = query.options(contains_eager('form_base_pokemon'))
         query = query.options(lazyload('form_base_pokemon.names'))
-        query = query.order_by(tables.Pokemon.order, tables.PokemonForm.id)
-        super(PokemonModel, self).__init__(g, query, columns)
+        BaseQueryModel.__init__(self, g, mappedClass, query, columns,
+                defaultSortClause=DefaultPokemonSortClause())
         self.tableName = 'Pokemon'
         self._hack_small_icons = False
 
     def _setQuery(self):
-        self._query = self.baseQuery
-        count = int(self._query.count())
+        super(PokemonModel, self)._setQuery()
         self.collapsing = 2  # XXX: Depend on sort/order
         if self.collapsing == 2:
             countquery = self._query.from_self(tables.Pokemon.identifier)
@@ -182,9 +222,8 @@ class PokemonModel(BaseQueryModel):
             self._rows = int(countquery.distinct().count())
             self.collapseKey = lambda pf: pf.pokemon.id
         else:
-            self._rows = int(count)
+            # self._rows set by superclass
             self.collapseKey = lambda pf: pf.pokemon.id
-        self.pages = [None] * (count / self._pagesize + 1)
         self.items = []
         self.nextindex = 0
         self.collapsed = {}

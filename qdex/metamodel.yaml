@@ -26,7 +26,7 @@ children:
                 class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
-                class: SimpleModelColumn
+                class: GameStringColumn
     -   name: !_ 'Types'
         icon: [qdex, icons/diamond.png]
         model:
@@ -38,7 +38,7 @@ children:
                 class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
-                class: SimpleModelColumn
+                class: LocalStringColumn
     -   name: !_ 'Abilities'
         icon: [qdex, icons/color.png]
         model:
@@ -50,7 +50,7 @@ children:
                 class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
-                class: SimpleModelColumn
+                class: GameStringColumn
     -   name: !_ 'Items'
         icon: [pokedex, data/media/items/rare-candy.png]
         model:
@@ -62,7 +62,7 @@ children:
                 class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
-                class: SimpleModelColumn
+                class: GameStringColumn
     -   name: !_ 'Natures'
         icon: [qdex, icons/smiley-cool.png]
         model:
@@ -74,4 +74,4 @@ children:
                 class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
-                class: SimpleModelColumn
+                class: GameStringColumn

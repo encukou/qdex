@@ -9,18 +9,25 @@ A query models for pokémon
 from PySide import QtGui, QtCore
 Qt = QtCore.Qt
 
-from pokedex.db import media
+from pokedex.db import tables, media
 
 from qdex.delegate import PokemonDelegate, PokemonNameDelegate
 from qdex.loadableclass import LoadableMetaclass
+
+from qdex.sortclause import SimpleSortClause, GameStringSortClause
 
 class ModelColumn(object):
     """A column in a query model
     """
     __metaclass__ = LoadableMetaclass
 
-    def __init__(self, name, identifier=None):
+    def __init__(self, name, model, identifier=None, mappedClass=None):
         self.name = name
+        self.model = model
+        if mappedClass is None:
+            self.mappedClass = self.model.mappedClass
+        else:
+            self.mappedClass = mappedClass
 
     def headerData(self, role, model):
         """Data used for the column header"""
@@ -49,13 +56,23 @@ class ModelColumn(object):
         """Return __init__ kwargs needed to reconstruct self"""
         return dict(name=self.name)
 
+    def getSortClause(self, descending=True, **kwargs):
+        """Get a SortClause that corresponds to this column & given args
+        """
+        raise NotImplementedError
+
+    def orderColumns(self):
+        """Returns the DB column(s) used to order this column
+        """
+        raise NotImplementedError
+
 class SimpleModelColumn(ModelColumn):
     """A pretty dumb column that just gets an attribute and displays it
     """
     def __init__(self, attr, name=None, **kwargs):
         if name is None:
             name = attr
-        super(SimpleModelColumn, self).__init__(name=name, **kwargs)
+        ModelColumn.__init__(self, name=name, **kwargs)
         self.attr = attr
 
     def data(self, item, index, role):
@@ -66,11 +83,42 @@ class SimpleModelColumn(ModelColumn):
         representation = super(SimpleModelColumn, self).save()
         representation['attr'] = self.attr
         return representation
+
+    def getSortClause(self, descending=False):
+        return SimpleSortClause(self, descending)
+
+    def orderColumns(self):
+        """Returns the DB column(s) used to order this column
+        """
+        return [getattr(self.model.mappedClass, self.attr)]
+
 ModelColumn.defaultClassForLoad = SimpleModelColumn
 
-class PokemonNameColumn(ModelColumn):
+class GameStringColumn(SimpleModelColumn):
+    """A column to display data translated to the game language
+    """
+    def __init__(self, attr, model, translationClass=None, **kwargs):
+        SimpleModelColumn.__init__(self, model=model, attr=attr, **kwargs)
+        if translationClass is None:
+            mappedClass = self.mappedClass
+            for translationClass in mappedClass.translation_classes:
+                columns = translationClass.__table__.c
+                if any(col.name == attr for col in columns):
+                    break
+            else:
+                raise ValueError("Translated column %s not found" % attr)
+        self.translationClass = translationClass
+
+    def getSortClause(self, descending=False):
+        return GameStringSortClause(self, descending)
+
+class PokemonNameColumn(GameStringColumn):
     """Display the pokémon name & icon"""
     delegate = PokemonDelegate
+
+    def __init__(self, **kwargs):
+        GameStringColumn.__init__(self,
+                attr='name', mappedClass=tables.Pokemon, **kwargs)
 
     def data(self, form, index, role):
         if role == Qt.DisplayRole:
@@ -105,6 +153,9 @@ class PokemonNameColumn(ModelColumn):
                 )
         else:
             return self.data(forms[0], index, role)
+
+    def orderColumns(self):
+        return [tables.Pokemon.name]
 
 class PokemonTypeColumn(ModelColumn):
     """Display the pokémon type/s"""

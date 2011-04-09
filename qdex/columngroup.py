@@ -160,9 +160,10 @@ def columnFactory(columnClass):
                 self.name = name
                 self.kwargs = kwargs
 
-            def getColumn(self):
+            def getColumn(self, model):
                 """Get a new column from this factory"""
-                return self.columnClass(name=self.name, **self.kwargs)
+                return self.columnClass(name=self.name, model=model,
+                        **self.kwargs)
 
         columnFactory.memo[columnClass] = ColumnFactory
         return ColumnFactory
