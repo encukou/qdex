@@ -68,10 +68,12 @@ class QueryView(QtGui.QTreeView):
         except IndexError:
             pass
         else:
-            name = column.headerData(Qt.DisplayRole, self.model())
-            action = menu.addAction(_(u'Remove column {0}').format(name))
-            action.triggered.connect(lambda: model.removeColumn(columnIndex))
-            menu.addSeparator()
+            if columnIndex != 0:
+                name = column.headerData(Qt.DisplayRole, self.model())
+                action = menu.addAction(_(u'Remove column {0}').format(name))
+                remove = lambda: model.removeColumn(columnIndex)
+                action.triggered.connect(remove)
+                menu.addSeparator()
         # XXX: Move the table's column groups to the model
         group = defaultColumnGroups.get(model.tableName)
         if group:

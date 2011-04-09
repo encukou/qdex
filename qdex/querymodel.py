@@ -95,6 +95,20 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         """Can't save a query directly"""
         raise AssertionError("Can't save a BaseQueryModel")
 
+    def removeColumns(self, column, count, parent=QtCore.QModelIndex()):
+        if not parent.isValid():
+            last = column + count - 1
+            if column == 0:
+                # Can't remove the first column
+                column += 1
+                last -= 1
+                if column == last:
+                    return False
+            self.beginRemoveColumns(QtCore.QModelIndex(), column, last)
+            del self.columns[column:last + 1]
+            self.endRemoveColumns()
+            return True
+
 class TableModel(BaseQueryModel):
     """Model that displays a DB table"""
     def __init__(self, g, table, columns):
