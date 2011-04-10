@@ -58,6 +58,14 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         self._rows = int(self._query.count())
         self.pages = [None] * (self._rows // self._pagesize + 1)
 
+    def dump(self):
+        """Dump a simple representation of the data to stdout
+        """
+        for item in self:
+            for column in self.columns:
+                print column.data(item, None),
+            print
+
     def allDataChanged(self):
         """Called when all of the data is changed, e.g. retranslated"""
         self._setQuery()
