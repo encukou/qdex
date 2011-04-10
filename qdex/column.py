@@ -14,7 +14,8 @@ from pokedex.db import tables, media
 from qdex.delegate import PokemonDelegate, PokemonNameDelegate
 from qdex.loadableclass import LoadableMetaclass
 
-from qdex.sortclause import SimpleSortClause, GameStringSortClause
+from qdex.sortclause import (SimpleSortClause, GameStringSortClause,
+        LocalStringSortClause)
 
 class ModelColumn(object):
     """A column in a query model
@@ -127,7 +128,7 @@ class LocalStringColumn(ModelColumn):
     def data(self, item, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             translations = getattr(item, self.mapAttr)
-            for language in self.model.g.languages:
+            for language in self.languages:
                 try:
                     translation = translations[language]
                 except KeyError:
@@ -140,6 +141,12 @@ class LocalStringColumn(ModelColumn):
                 return '[%s]' % item.identifier
             else:
                 return '[???]'
+
+    @property
+    def languages(self):
+        """The UI languages, by order of precedence
+        """
+        return self.model.g.languages
 
     def save(self):
         representation = super(LocalStringColumn, self).save()

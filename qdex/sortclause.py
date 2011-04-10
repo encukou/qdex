@@ -6,7 +6,8 @@
 A sort clause for query models
 """
 
-from sqlalchemy.sql.expression import and_
+from sqlalchemy.sql.expression import and_, case
+from sqlalchemy.orm import aliased
 from pokedex.db import tables
 from pokedex.db.multilang import default_language_param
 
@@ -91,5 +92,33 @@ class GameStringSortClause(SortClause):
             query = query.order_by(dbcolumn.desc())
         else:
             query = query.order_by(dbcolumn.asc())
-        print query
         return query
+
+class LocalStringSortClause(SortClause):
+    """Translated-message sort clause for strings in the "UI language(s)"
+    """
+    def sortedQuery(self, query):
+        column = self.column
+        mappedClass = column.mappedClass
+        translationClass = column.translationClass
+        attr = column.attr
+        whens = []
+        for language in column.languages:
+            aliasedTable = aliased(translationClass, name='user_alias')
+            query = query.outerjoin((aliasedTable, and_(
+                    aliasedTable.foreign_id == mappedClass.id,
+                    aliasedTable.local_language == language,
+                )))
+            aliasedColumn = getattr(aliasedTable, attr)
+            whens.append((aliasedColumn != None, aliasedColumn))
+        if attr == 'name':
+            default = mappedClass.identifier
+        else:
+            default = None
+        if self.descending:
+            return query.order_by(case(whens, else_=default).desc())
+        else:
+            return query.order_by(case(whens, else_=default).asc())
+
+
+
