@@ -78,7 +78,7 @@ class SimpleModelColumn(ModelColumn):
         ModelColumn.__init__(self, name=name, **kwargs)
         self.attr = attr
 
-    def data(self, item, index, role):
+    def data(self, item, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return getattr(item, self.attr)
 
@@ -124,7 +124,7 @@ class LocalStringColumn(ModelColumn):
         self.mapAttr = attr + '_map'
         self.translationClass = getTranslationClass(self.mappedClass, attr)
 
-    def data(self, item, index, role):
+    def data(self, item, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             translations = getattr(item, self.mapAttr)
             for language in self.model.g.languages:
@@ -160,9 +160,9 @@ class PokemonNameColumn(GameStringColumn):
         GameStringColumn.__init__(self,
                 attr='name', mappedClass=tables.Pokemon, **kwargs)
 
-    def data(self, form, index, role):
+    def data(self, form, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
-            g = index.model().g
+            g = self.model.g
             formName = g.name(form)
             if formName:
                 return u'{0} {1}'.format(formName, form.form_base_pokemon.name)
@@ -185,7 +185,7 @@ class PokemonNameColumn(GameStringColumn):
             except ValueError:
                 return QtGui.QPixmap(media.UnknownPokemonMedia(0).icon().path)
 
-    def collapsedData(self, forms, index, role):
+    def collapsedData(self, forms, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return "{name} ({forms})".format(
                     name=forms[0].pokemon.name,
@@ -201,9 +201,9 @@ class PokemonTypeColumn(ModelColumn):
     """Display the pokémon type/s"""
     delegate = PokemonNameDelegate
 
-    def data(self, form, index, role):
+    def data(self, form, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
-            g = index.model().g
+            g = self.model.g
             return '/'.join(g.name(t) for t in form.pokemon.types)
         elif role == Qt.UserRole:
             return form.pokemon.types

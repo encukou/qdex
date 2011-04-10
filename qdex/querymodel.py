@@ -79,7 +79,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
     def columnCount(self, parent=QtCore.QModelIndex()):
         return len(self.columns)
 
-    def data(self, index, role):
+    def data(self, index, role=Qt.DisplayRole):
         item = self.itemForIndex(index)
         if item:
             return self.columns[index.column()].data(item, index, role)
@@ -275,7 +275,7 @@ class PokemonModel(BaseQueryModel):
         else:
             return False
 
-    def data(self, index, role):
+    def data(self, index, role=Qt.DisplayRole):
         if index.row() >= 0:
             return super(PokemonModel, self).data(index, role)
         else:
