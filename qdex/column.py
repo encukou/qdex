@@ -17,6 +17,8 @@ from qdex.loadableclass import LoadableMetaclass
 from qdex.sortclause import (SimpleSortClause, GameStringSortClause,
         LocalStringSortClause, ForeignKeySortClause)
 
+from qdex.pokedexhelpers import getTranslationClass
+
 class ModelColumn(object):
     """A column in a query model
     """
@@ -95,14 +97,6 @@ class SimpleModelColumn(ModelColumn):
         return [getattr(self.model.mappedClass, self.attr)]
 
 ModelColumn.defaultClassForLoad = SimpleModelColumn
-
-def getTranslationClass(mappedClass, attrName):
-    for translationClass in mappedClass.translation_classes:
-        columns = translationClass.__table__.c
-        if any(col.name == attrName for col in columns):
-            return translationClass
-    else:
-        raise ValueError("Translated column %s not found" % attrName)
 
 class GameStringColumn(SimpleModelColumn):
     """A column to display data translated to the game language

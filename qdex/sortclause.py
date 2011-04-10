@@ -9,9 +9,9 @@ A sort clause for query models
 from sqlalchemy.sql.expression import and_, case
 from sqlalchemy.orm import aliased
 from pokedex.db import tables
-from pokedex.db.multilang import default_language_param
 
 from qdex.loadableclass import LoadableMetaclass
+from qdex.pokedexhelpers import default_language_param
 
 class SortClause(object):
     """A sort clause to be attached to a view
