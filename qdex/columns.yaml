@@ -159,6 +159,12 @@ Move:
     -   name: !_ Name
         attr: name
         class: GameStringColumn
+    -   name: !_ Type
+        attr: type
+        class: ForeignKeyColumn
+        foreignColumn:
+            attr: name
+            class: LocalStringColumn
 Type:
     columns:
     -   name: !_ ID

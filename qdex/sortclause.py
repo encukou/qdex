@@ -120,5 +120,16 @@ class LocalStringSortClause(SortClause):
         else:
             return query.order_by(case(whens, else_=default).asc())
 
+class ForeignKeySortClause(SortClause):
+    """Proxy sort clause, for use with a ForeignKeyColumn
+    """
+    def __init__(self, column, descending=False, **kwargs):
+        SortClause.__init__(self, column, descending)
+        self.foreignClause = self.column.foreignColumn.getSortClause(
+                descending=self.descending, **kwargs)
+
+    def sortedQuery(self, query):
+        query = query.join(getattr(self.column.mappedClass, self.column.attr))
+        return self.foreignClause.sortedQuery(query)
 
 

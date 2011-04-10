@@ -27,6 +27,12 @@ children:
             -   name: !_ Name
                 attr: name
                 class: GameStringColumn
+            -   name: !_ Type
+                attr: type
+                class: ForeignKeyColumn
+                foreignColumn:
+                    attr: name
+                    class: LocalStringColumn
     -   name: !_ 'Types'
         icon: [qdex, icons/diamond.png]
         model:

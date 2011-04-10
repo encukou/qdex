@@ -15,7 +15,7 @@ from qdex.delegate import PokemonDelegate, PokemonNameDelegate
 from qdex.loadableclass import LoadableMetaclass
 
 from qdex.sortclause import (SimpleSortClause, GameStringSortClause,
-        LocalStringSortClause)
+        LocalStringSortClause, ForeignKeySortClause)
 
 class ModelColumn(object):
     """A column in a query model
@@ -37,9 +37,9 @@ class ModelColumn(object):
 
     def data(self, item, role):
         """Data for `item`"""
+        return NotImplementedError
 
-    @staticmethod
-    def delegate(view):
+    def delegate(self, view):
         """Return a delegate for this column, using the given view"""
         return QtGui.QStyledItemDelegate()
 
@@ -158,6 +158,47 @@ class LocalStringColumn(ModelColumn):
 
     def orderColumns(self):
         return [getattr(self.model.mappedClass, self.mapAttr)]
+
+class ForeignKeyColumn(SimpleModelColumn):
+    """A proxy column that gives information about a foreign key column.
+
+    `foreignColumn` is a column for the referenced table
+    """
+    def __init__(self, foreignColumn, **kwargs):
+        SimpleModelColumn.__init__(self, **kwargs)
+        attr = self.attr
+        for column in self.mappedClass.__table__.c:
+            if column.name == attr + '_id':
+                foreignKey = column.foreign_keys[0]
+                table = foreignKey.column.table
+                for cls in tables.mapped_classes:
+                    if cls.__table__ == table:
+                        mappedClass = cls
+                        break
+                else:
+                    raise AssertionError('Table %s not found' % table.name)
+                break
+        else:
+            raise ValueError("Column %s_id not found" % attr)
+        self.foreignColumn = ModelColumn.load(foreignColumn,
+                mappedClass=mappedClass, model=self.model)
+
+    def data(self, item, role=Qt.DisplayRole):
+        return self.foreignColumn.data(getattr(item, self.attr), role)
+
+    def delegate(self, view):
+        return self.foreignColumn.delegate(view)
+
+    def save(self):
+        representation = super(ForeignKeyColumn, self).save()
+        representation['foreignColumn'] = self.foreignColumn.save()
+        return representation
+
+    def getSortClause(self, descending=True, **kwargs):
+        return ForeignKeySortClause(self, descending, **kwargs)
+
+    def orderColumns(self):
+        return self.foreignColumn.orderColumns()
 
 class PokemonNameColumn(GameStringColumn):
     """Display the pokémon name & icon"""
