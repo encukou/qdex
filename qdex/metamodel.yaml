@@ -13,9 +13,14 @@ children:
             columns:
             -   class: PokemonNameColumn
                 name: !_ {message: Pokémon, context: pokemon column name}
+            -   name: !_ Order
+                attr: form_base_pokemon
+                class: ForeignKeyColumn
+                foreignColumn:
+                    attr: order
             -   class: PokemonTypeColumn
                 name: !_ {message: Type, context: pokemon column name}
-    -   name: !_ 'Moves'
+    -   name: !_ Moves
         icon: [pokedex, data/media/items/tm-normal.png]
         model:
             class: TableModel
