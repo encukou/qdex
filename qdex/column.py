@@ -62,7 +62,10 @@ class ModelColumn(object):
         raise NotImplementedError
 
     def orderColumns(self):
-        """Returns the DB column(s) used to order this column
+        """Return key(s) that are used to order this column.
+        Order clauses referencing the same keys are redundant.
+
+        Usually (for SimpleSortClause), these are ORM column properties.
         """
         raise NotImplementedError
 
@@ -88,29 +91,66 @@ class SimpleModelColumn(ModelColumn):
         return SimpleSortClause(self, descending)
 
     def orderColumns(self):
-        """Returns the DB column(s) used to order this column
-        """
         return [getattr(self.model.mappedClass, self.attr)]
 
 ModelColumn.defaultClassForLoad = SimpleModelColumn
+
+def getTranslationClass(mappedClass, attrName):
+    for translationClass in mappedClass.translation_classes:
+        columns = translationClass.__table__.c
+        if any(col.name == attrName for col in columns):
+            return translationClass
+    else:
+        raise ValueError("Translated column %s not found" % attrName)
 
 class GameStringColumn(SimpleModelColumn):
     """A column to display data translated to the game language
     """
     def __init__(self, attr, model, translationClass=None, **kwargs):
         SimpleModelColumn.__init__(self, model=model, attr=attr, **kwargs)
-        if translationClass is None:
-            mappedClass = self.mappedClass
-            for translationClass in mappedClass.translation_classes:
-                columns = translationClass.__table__.c
-                if any(col.name == attr for col in columns):
-                    break
-            else:
-                raise ValueError("Translated column %s not found" % attr)
-        self.translationClass = translationClass
+        self.translationClass = getTranslationClass(self.mappedClass, attr)
 
     def getSortClause(self, descending=False):
         return GameStringSortClause(self, descending)
+
+class LocalStringColumn(ModelColumn):
+    """A column to display data translated to the UI language
+    """
+    def __init__(self, attr, name=None, **kwargs):
+        if name is None:
+            name = attr
+        ModelColumn.__init__(self, name=name, **kwargs)
+        self.attr = attr
+        self.mapAttr = attr + '_map'
+        self.translationClass = getTranslationClass(self.mappedClass, attr)
+
+    def data(self, item, index, role):
+        if role == Qt.DisplayRole:
+            translations = getattr(item, self.mapAttr)
+            for language in self.model.g.languages:
+                try:
+                    translation = translations[language]
+                except KeyError:
+                    continue
+                else:
+                    if translation:
+                        return translation
+            if self.mapAttr == 'name_map':
+                # For maps, fall back to identifiers
+                return '[%s]' % item.identifier
+            else:
+                return '[???]'
+
+    def save(self):
+        representation = super(LocalStringColumn, self).save()
+        representation['attr'] = self.attr
+        return representation
+
+    def getSortClause(self, descending=False):
+        return LocalStringSortClause(self, descending)
+
+    def orderColumns(self):
+        return [getattr(self.model.mappedClass, self.mapAttr)]
 
 class PokemonNameColumn(GameStringColumn):
     """Display the pokémon name & icon"""
