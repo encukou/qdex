@@ -73,7 +73,6 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         if not page:
             start = pageno * self._pagesize
             end = (pageno + 1) * self._pagesize
-            print start, end
             page = self.pages[pageno] = self._query[start:end]
         return page[offset]
 
@@ -265,14 +264,29 @@ class PokemonModel(BaseQueryModel):
         else:
             return 0
 
+    def hasChildren(self, parent=QtCore.QModelIndex()):
+        if not parent.isValid():
+            return True
+        elif parent.internalId() == -1:
+            # XXX: Cheating a bit: return True for all pokémon, even if
+            # the index has 0 children. Since the view doesn't draw the
+            # tree expanders, we can get away with this.
+            return True
+        else:
+            return False
+
     def data(self, index, role):
         if index.row() >= 0:
             return super(PokemonModel, self).data(index, role)
         else:
             item = self[index.internalId()]
-            items = [item] + self.collapsed[self.collapseKey(item)]
             column = self.columns[index.column()]
-            return column.collapsedData(items, index, role)
+            extraItems = self.collapsed[self.collapseKey(item)]
+            if extraItems:
+                items = [item] + extraItems
+                return column.collapsedData(items, index, role)
+            else:
+                return column.data(item, index, role)
 
     def parent(self, index):
         iid = index.internalId()
