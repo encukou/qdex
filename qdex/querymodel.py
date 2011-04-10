@@ -90,7 +90,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
     def data(self, index, role=Qt.DisplayRole):
         item = self.itemForIndex(index)
         if item:
-            return self.columns[index.column()].data(item, index, role)
+            return self.columns[index.column()].data(item, role)
 
     def itemForIndex(self, index):
         """Returns the item that corresponds to the given index"""
@@ -292,9 +292,9 @@ class PokemonModel(BaseQueryModel):
             extraItems = self.collapsed[self.collapseKey(item)]
             if extraItems:
                 items = [item] + extraItems
-                return column.collapsedData(items, index, role)
+                return column.collapsedData(items, role)
             else:
-                return column.data(item, index, role)
+                return column.data(item, role)
 
     def parent(self, index):
         iid = index.internalId()

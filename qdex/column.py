@@ -35,7 +35,7 @@ class ModelColumn(object):
         if role == Qt.DisplayRole:
             return model.g.translator(self.name)
 
-    def data(self, item, index, role):
+    def data(self, item, role):
         """Data for `item`"""
 
     @staticmethod
@@ -43,10 +43,10 @@ class ModelColumn(object):
         """Return a delegate for this column, using the given view"""
         return QtGui.QStyledItemDelegate()
 
-    def collapsedData(self, forms, index, role):
+    def collapsedData(self, forms, role):
         """Return a summary of data from all `forms`. Used for pokémon columns.
         """
-        allData = [self.data(form, index, role) for form in forms]
+        allData = [self.data(form, role) for form in forms]
         if all(data == allData[0] for data in allData[1:]):
             return allData[0]
         else:
@@ -79,7 +79,7 @@ class SimpleModelColumn(ModelColumn):
         ModelColumn.__init__(self, name=name, **kwargs)
         self.attr = attr
 
-    def data(self, item, index, role=Qt.DisplayRole):
+    def data(self, item, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return getattr(item, self.attr)
 
@@ -125,7 +125,7 @@ class LocalStringColumn(ModelColumn):
         self.mapAttr = attr + '_map'
         self.translationClass = getTranslationClass(self.mappedClass, attr)
 
-    def data(self, item, index, role=Qt.DisplayRole):
+    def data(self, item, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             translations = getattr(item, self.mapAttr)
             for language in self.languages:
@@ -167,7 +167,7 @@ class PokemonNameColumn(GameStringColumn):
         GameStringColumn.__init__(self,
                 attr='name', mappedClass=tables.Pokemon, **kwargs)
 
-    def data(self, form, index, role=Qt.DisplayRole):
+    def data(self, form, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             g = self.model.g
             formName = g.name(form)
@@ -176,7 +176,7 @@ class PokemonNameColumn(GameStringColumn):
             else:
                 return form.form_base_pokemon.name
         elif role == Qt.DecorationRole:
-            if index.model()._hack_small_icons:
+            if self.model._hack_small_icons:
                 # XXX: A hack to make the delegate think the icon is smaller
                 # than it really is
                 return QtGui.QPixmap(32, 24)
@@ -192,14 +192,14 @@ class PokemonNameColumn(GameStringColumn):
             except ValueError:
                 return QtGui.QPixmap(media.UnknownPokemonMedia(0).icon().path)
 
-    def collapsedData(self, forms, index, role=Qt.DisplayRole):
+    def collapsedData(self, forms, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return "{name} ({forms})".format(
                     name=forms[0].pokemon.name,
                     forms=len(forms),
                 )
         else:
-            return self.data(forms[0], index, role)
+            return self.data(forms[0], role)
 
     def orderColumns(self):
         return [tables.Pokemon.name]
@@ -208,14 +208,14 @@ class PokemonTypeColumn(ModelColumn):
     """Display the pokémon type/s"""
     delegate = PokemonNameDelegate
 
-    def data(self, form, index, role=Qt.DisplayRole):
+    def data(self, form, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             g = self.model.g
             return '/'.join(g.name(t) for t in form.pokemon.types)
         elif role == Qt.UserRole:
             return form.pokemon.types
 
-    def collapsedData(self, forms, index, role=Qt.UserRole):
+    def collapsedData(self, forms, role=Qt.DisplayRole):
         if role == Qt.UserRole:
             typesFirst = forms[0].pokemon.types
             typesFirstSet = set(typesFirst)
@@ -228,8 +228,8 @@ class PokemonTypeColumn(ModelColumn):
                 commonTypes.append(None)
             return commonTypes
         elif role == Qt.DisplayRole:
-            g = index.model().g
-            types = self.collapsedData(forms, index)
+            g = self.model.g
+            types = self.collapsedData(forms, Qt.UserRole)
             return '/'.join(g.name(t) if t else '...' for t in types)
         else:
-            return self.data(forms[0], index, role)
+            return self.data(forms[0], role)
