@@ -18,6 +18,8 @@ from pokedex.db import connect, tables
 from qdex.queryview import QueryView
 from qdex.metamodel import MetaModel, MetaModelView
 
+echo = False
+
 class Translator(BaseTranslator):
     """Our very own translator"""
     package = 'qdex'
@@ -29,7 +31,7 @@ class Global(object):
             langs=None,
             mainwindow=None,
         ):
-        self.session = session or connect()
+        self.session = session or connect(engine_args=dict(echo=echo))
         self.mainwindow = mainwindow
         self.langs = langs or [u'en']
 
