@@ -15,7 +15,7 @@ children:
                 name: !_ {message: Pokémon, context: pokemon column name}
             -   name: !_ Order
                 attr: form_base_pokemon
-                class: ForeignKeyColumn
+                class: PokemonColumn
                 foreignColumn:
                     attr: order
             -   class: PokemonTypeColumn

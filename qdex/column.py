@@ -64,7 +64,7 @@ class ModelColumn(object):
         """
         raise NotImplementedError
 
-    def orderColumns(self):
+    def orderColumns(self, builder):
         """Return key(s) that are used to order this column.
         Order clauses referencing the same keys are redundant.
 
@@ -93,8 +93,8 @@ class SimpleModelColumn(ModelColumn):
     def getSortClause(self, descending=False):
         return SimpleSortClause(self, descending)
 
-    def orderColumns(self):
-        return [getattr(self.model.mappedClass, self.attr)]
+    def orderColumns(self, builder):
+        return [getattr(builder.mappedClass, self.attr)]
 
 ModelColumn.defaultClassForLoad = SimpleModelColumn
 
@@ -150,32 +150,33 @@ class LocalStringColumn(ModelColumn):
     def getSortClause(self, descending=False):
         return LocalStringSortClause(self, descending)
 
-    def orderColumns(self):
-        return [getattr(self.model.mappedClass, self.mapAttr)]
+    def orderColumns(self, builder):
+        return [getattr(builder.mappedClass, self.mapAttr)]
 
 class ForeignKeyColumn(SimpleModelColumn):
     """A proxy column that gives information about a foreign key column.
 
     `foreignColumn` is a column for the referenced table
     """
-    def __init__(self, foreignColumn, **kwargs):
+    def __init__(self, foreignColumn, foreignMappedClass=None, **kwargs):
         SimpleModelColumn.__init__(self, **kwargs)
         attr = self.attr
-        for column in self.mappedClass.__table__.c:
-            if column.name == attr + '_id':
-                foreignKey = column.foreign_keys[0]
-                table = foreignKey.column.table
-                for cls in tables.mapped_classes:
-                    if cls.__table__ == table:
-                        mappedClass = cls
-                        break
-                else:
-                    raise AssertionError('Table %s not found' % table.name)
-                break
-        else:
-            raise ValueError("Column %s_id not found" % attr)
+        if foreignMappedClass is None:
+            for column in self.mappedClass.__table__.c:
+                if column.name == attr + '_id':
+                    foreignKey = column.foreign_keys[0]
+                    table = foreignKey.column.table
+                    for cls in tables.mapped_classes:
+                        if cls.__table__ == table:
+                            foreignMappedClass = cls
+                            break
+                    else:
+                        raise AssertionError('Table %s not found' % table.name)
+                    break
+            else:
+                raise ValueError("Column %s_id not found" % attr)
         self.foreignColumn = ModelColumn.load(foreignColumn,
-                mappedClass=mappedClass, model=self.model)
+                mappedClass=foreignMappedClass, model=self.model)
 
     def data(self, item, role=Qt.DisplayRole):
         return self.foreignColumn.data(getattr(item, self.attr), role)
@@ -191,15 +192,26 @@ class ForeignKeyColumn(SimpleModelColumn):
     def getSortClause(self, descending=True, **kwargs):
         return ForeignKeySortClause(self, descending, **kwargs)
 
-    def orderColumns(self):
-        return self.foreignColumn.orderColumns()
+    def orderColumns(self, builder):
+        subbuilder = builder.subbuilder(
+                getattr(builder.mappedClass, self.attr),
+                self.foreignColumn.mappedClass,
+            )
+        return self.foreignColumn.orderColumns(subbuilder)
 
-class PokemonNameColumn(GameStringColumn):
+class PokemonColumn(ForeignKeyColumn):
+    """A proxy column that gives information about a pokémon through its form.
+    """
+    def __init__(self, **kwargs):
+        ForeignKeyColumn.__init__(self, foreignMappedClass=tables.Pokemon,
+                **kwargs)
+
+class PokemonNameColumn(SimpleModelColumn):
     """Display the pokémon name & icon"""
     delegate = PokemonDelegate
 
     def __init__(self, **kwargs):
-        GameStringColumn.__init__(self,
+        SimpleModelColumn.__init__(self,
                 attr='name', mappedClass=tables.Pokemon, **kwargs)
 
     def data(self, form, role=Qt.DisplayRole):
@@ -225,7 +237,7 @@ class PokemonNameColumn(GameStringColumn):
                     QtGui.QPixmapCache.insert(key, pixmap)
                 return pixmap
             except ValueError:
-                return QtGui.QPixmap(media.UnknownPokemonMedia(0).icon().path)
+                return QtGui.QPixmap(media.UnknownPokemonMedia().icon().path)
 
     def collapsedData(self, forms, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -236,8 +248,16 @@ class PokemonNameColumn(GameStringColumn):
         else:
             return self.data(forms[0], role)
 
-    def orderColumns(self):
-        return [tables.Pokemon.name]
+    def orderColumns(self, builder):
+        subbuilder = builder.subbuilder(
+                builder.mappedClass.form_base_pokemon,
+                tables.Pokemon,
+            )
+        names = builder.join(
+                subbuilder.mappedClass.names_local,
+                tables.Pokemon.names_table,
+            )
+        return [names.name]
 
 class PokemonTypeColumn(ModelColumn):
     """Display the pokémon type/s"""

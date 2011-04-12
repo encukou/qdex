@@ -7,7 +7,6 @@ A sort clause for query models
 """
 
 from sqlalchemy.sql.expression import and_, case
-from sqlalchemy.orm import aliased
 from pokedex.db import tables
 
 from qdex.loadableclass import LoadableMetaclass
@@ -30,106 +29,103 @@ class SortClause(object):
             representation['descending'] = True
         return representation
 
-    def sortedQuery(self, query):
-        """Return `query` ordered by this clause
+    def sort(self, builder):
+        """Sort the query in the given QueryBuilder
         """
-        raise NotImplementedError
+        for column in reversed(self.orderColumns(builder)):
+            if self.descending:
+                builder.query = builder.query.order_by(column.desc())
+            else:
+                builder.query = builder.query.order_by(column.asc())
 
-    def orderColumns(self):
-        """Return DB the columns used by this clause
+    def orderColumns(self, builder):
+        """Return DB columns used by the clause based on the given Builder
         """
-        return self.column.orderColumns()
+        return self.column.orderColumns(builder)
 
-    def overrides(self, other):
+    def overrides(self, other, builder):
         """Return True if this clause overrides the other one.
         """
-        selfOrderColumns = set(self.orderColumns())
-        otherOrderColumns = set(other.orderColumns())
+        selfOrderColumns = set(self.orderColumns(builder))
+        otherOrderColumns = set(other.orderColumns(builder))
         return selfOrderColumns >= otherOrderColumns
 
 class SimpleSortClause(SortClause):
     """Simply sorts by the associated column's orderColumns
     """
-    def __init__(self, column, descending=False):
-        SortClause.__init__(self, column, descending)
-
-    def sortedQuery(self, query):
-        for column in self.orderColumns():
-            if self.descending:
-                query = query.order_by(column.desc())
-            else:
-                query = query.order_by(column.asc())
-        return query
+    pass
 
 class DefaultPokemonSortClause(SimpleSortClause):
-    """Default sort clause for Pokemon: pokemon.order and form.id
+    """Default sort clause for PokemonForm: pokemon.order and form.id
     """
     def __init__(self, descending=False):
         SimpleSortClause.__init__(self, None, descending)
 
-    def sortedQuery(self, query):
-        """Return `query` ordered by this clause
-        """
-        return query.order_by(tables.Pokemon.order, tables.PokemonForm.id)
-
-    def orderColumns(self):
+    def orderColumns(self, builder):
         """Return DB the columns used by this clause
         """
-        return [tables.Pokemon.order, tables.PokemonForm.id]
+        pokemon = builder.join(builder.mappedClass.form_base_pokemon,
+                tables.Pokemon)
+        return [pokemon.order, builder.mappedClass.id]
 
 class GameStringSortClause(SortClause):
     """Translated-message sort clause for strings in the "game language"
     """
-    def sortedQuery(self, query):
-        mappedClass = self.column.mappedClass
+    def sort(self, builder):
         translationClass = self.column.translationClass
-        dbcolumn = getattr(translationClass, self.column.attr)
-        query = query.join((translationClass, and_(
-                translationClass.foreign_id == mappedClass.id,
+        onFactory = lambda translationClass: and_(
+                translationClass.foreign_id == builder.mappedClass.id,
                 translationClass.local_language_id == default_language_param,
-            )))
+            )
+        translationClass = builder.joinOn('message', onFactory,
+                translationClass)
+        dbcolumn = getattr(translationClass, self.column.attr)
         if self.descending:
-            query = query.order_by(dbcolumn.desc())
+            builder.query = builder.query.order_by(dbcolumn.desc())
         else:
-            query = query.order_by(dbcolumn.asc())
-        return query
+            builder.query = builder.query.order_by(dbcolumn.asc())
 
 class LocalStringSortClause(SortClause):
     """Translated-message sort clause for strings in the "UI language(s)"
     """
-    def sortedQuery(self, query):
+    def sort(self, builder):
         column = self.column
-        mappedClass = column.mappedClass
         translationClass = column.translationClass
         attr = column.attr
         whens = []
         for language in column.languages:
-            aliasedTable = aliased(translationClass, name='user_alias')
-            query = query.outerjoin((aliasedTable, and_(
-                    aliasedTable.foreign_id == mappedClass.id,
+            key = ('translation', translationClass, language)
+            onFactory = lambda aliasedTable: and_(
+                    aliasedTable.foreign_id == builder.mappedClass.id,
                     aliasedTable.local_language == language,
-                )))
+                )
+            aliasedTable = builder.joinOn(key, onFactory, translationClass)
             aliasedColumn = getattr(aliasedTable, attr)
             whens.append((aliasedColumn != None, aliasedColumn))
         if attr == 'name':
-            default = mappedClass.identifier
+            default = builder.mappedClass.identifier
         else:
             default = None
+        query = builder.query
         if self.descending:
-            return query.order_by(case(whens, else_=default).desc())
+            query = query.order_by(case(whens, else_=default).desc())
         else:
-            return query.order_by(case(whens, else_=default).asc())
+            query = query.order_by(case(whens, else_=default).asc())
+        builder.query = query
 
 class ForeignKeySortClause(SortClause):
     """Proxy sort clause, for use with a ForeignKeyColumn
+
+    Set `join` to True to disable joining the proxied class
     """
     def __init__(self, column, descending=False, **kwargs):
         SortClause.__init__(self, column, descending)
         self.foreignClause = self.column.foreignColumn.getSortClause(
                 descending=self.descending, **kwargs)
 
-    def sortedQuery(self, query):
-        query = query.join(getattr(self.column.mappedClass, self.column.attr))
-        return self.foreignClause.sortedQuery(query)
-
-
+    def sort(self, builder):
+        subbuilder = builder.subbuilder(
+                getattr(builder.mappedClass, self.column.attr),
+                self.column.foreignColumn.mappedClass,
+            )
+        self.foreignClause.sort(subbuilder)
