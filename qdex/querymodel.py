@@ -52,7 +52,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
 
     def _setQuery(self):
         """Called every time the query changes"""
-        builder = QueryBuilder(self.baseQuery, self.mappedClass)
+        builder = self.baseBuilder()
         for clause in reversed(self.sortClauses):
             clause.sort(builder)
         print
@@ -60,6 +60,11 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         self._query = builder.query
         self._rows = int(self._query.count())
         self.pages = [None] * (self._rows // self._pagesize + 1)
+
+    def baseBuilder(self):
+        """Return a QueryBuilder corresponding to the base query
+        """
+        return QueryBuilder(self.baseQuery, self.mappedClass)
 
     def dump(self):
         """Dump a simple representation of the data to stdout
@@ -236,6 +241,12 @@ class PokemonModel(BaseQueryModel):
         self.nextindex = 0
         self.collapsed = {}
 
+    def baseBuilder(self):
+        builder = super(PokemonModel, self).baseBuilder()
+        builder.setIncluded(tables.PokemonForm.form_base_pokemon,
+                tables.Pokemon)
+        return builder
+
     def __getitem__(self, i):
         if not self.collapsing:
             return super(PokemonModel, self).__getitem__(i)
@@ -409,4 +420,9 @@ class QueryBuilder(object):
         return QueryBuilder(None, aliasedClass,
                 _relations=self._relations[key][1], _query=self._query)
 
+    def setIncluded(self, key, foreignClass):
+        """Mark foreignClass as already included in the builder, under key.
 
+        Useful for SQLA's joined-loaded properties
+        """
+        self._relations[key] = foreignClass, {}
