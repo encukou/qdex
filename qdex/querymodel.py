@@ -8,6 +8,8 @@ Query models
 
 from PySide import QtCore, QtGui
 Qt = QtCore.Qt
+
+from sqlalchemy.sql.expression import and_, or_
 from sqlalchemy.orm import contains_eager, lazyload, aliased
 from pokedex.db import tables
 import traceback
@@ -15,6 +17,7 @@ import traceback
 from qdex.column import ModelColumn
 from qdex.loadableclass import LoadableMetaclass
 from qdex.sortclause import DefaultPokemonSortClause
+from qdex.pokedexhelpers import default_language_param
 
 class ModelMetaclass(LoadableMetaclass, type(QtCore.QAbstractItemModel)):
     """Merged metaclass"""
@@ -46,7 +49,9 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             self.defaultSortClause = self.columns[0].getSortClause()
         else:
             self.defaultSortClause = defaultSortClause
+        print self.defaultSortClause
         self.sortClauses = [self.defaultSortClause]
+        print self.sortClauses
         self.filters = []
         self._setQuery()
 
@@ -152,7 +157,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         self.endInsertColumns()
 
     def sort(self, columnIndex, order=Qt.AscendingOrder):
-        newClauses = []
+        newClauses = [self.defaultSortClause]
         if columnIndex == -1:
             pass
         else:
@@ -215,9 +220,9 @@ class PokemonModel(BaseQueryModel):
     def __init__(self, g, columns):
         mappedClass = tables.PokemonForm
         query = g.session.query(mappedClass)
-        query = query.join(tables.PokemonForm.form_base_pokemon)
-        query = query.options(contains_eager('form_base_pokemon'))
-        query = query.options(lazyload('form_base_pokemon.names'))
+        query = query.join(tables.PokemonForm.pokemon)
+        query = query.options(contains_eager('pokemon'))
+        query = query.options(lazyload('pokemon.names'))
         BaseQueryModel.__init__(self, g, mappedClass, query, columns,
                 defaultSortClause=DefaultPokemonSortClause())
         self.tableName = 'Pokemon'
@@ -225,7 +230,9 @@ class PokemonModel(BaseQueryModel):
 
     def _setQuery(self):
         super(PokemonModel, self)._setQuery()
-        self.collapsing = 2  # XXX: Depend on sort/order
+        print self.sortClauses
+        print list(c.collapsing for c in self.sortClauses)
+        self.collapsing = min(c.collapsing for c in self.sortClauses)
         if self.collapsing == 2:
             countquery = self._query.from_self(tables.Pokemon.identifier)
             self._rows = int(countquery.distinct().count())
@@ -243,8 +250,7 @@ class PokemonModel(BaseQueryModel):
 
     def baseBuilder(self):
         builder = super(PokemonModel, self).baseBuilder()
-        builder.setIncluded(tables.PokemonForm.form_base_pokemon,
-                tables.Pokemon)
+        builder.setIncluded(tables.PokemonForm.pokemon, tables.Pokemon)
         return builder
 
     def __getitem__(self, i):

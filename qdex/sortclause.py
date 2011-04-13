@@ -16,6 +16,7 @@ class SortClause(object):
     """A sort clause to be attached to a view
     """
     __metaclass__ = LoadableMetaclass
+    collapsing = 1
 
     def __init__(self, column, descending=False):
         self.column = column
@@ -59,6 +60,8 @@ class SimpleSortClause(SortClause):
 class DefaultPokemonSortClause(SimpleSortClause):
     """Default sort clause for PokemonForm: pokemon.order and form.id
     """
+    collapsing = 2
+
     def __init__(self, descending=False):
         SimpleSortClause.__init__(self, None, descending)
 

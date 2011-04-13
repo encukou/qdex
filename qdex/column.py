@@ -208,7 +208,7 @@ class PokemonColumn(ForeignKeyColumn):
     """
     def __init__(self, **kwargs):
         ForeignKeyColumn.__init__(self, foreignMappedClass=tables.Pokemon,
-                attr='form_base_pokemon', **kwargs)
+                attr='pokemon', **kwargs)
 
 class AssociationListColumn(SimpleModelColumn):
     """A proxy column that gives information about an AssociationProxy.
@@ -290,9 +290,9 @@ class PokemonNameColumn(SimpleModelColumn):
             g = self.model.g
             formName = g.name(form)
             if formName:
-                return u'{0} {1}'.format(formName, form.form_base_pokemon.name)
+                return u'{0} {1}'.format(formName, form.pokemon.name)
             else:
-                return form.form_base_pokemon.name
+                return form.pokemon.name
         elif role == Qt.DecorationRole:
             if self.model._hack_small_icons:
                 # XXX: A hack to make the delegate think the icon is smaller
@@ -321,7 +321,7 @@ class PokemonNameColumn(SimpleModelColumn):
 
     def orderColumns(self, builder):
         subbuilder = builder.subbuilder(
-                builder.mappedClass.form_base_pokemon,
+                builder.mappedClass.pokemon,
                 tables.Pokemon,
             )
         names = builder.join(
