@@ -26,7 +26,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
     Can be queried the Python way, (with []).
     """
     collapsingPossible = False
-    _pagesize = 100
+    _pagesize = 1000
     __metaclass__ = ModelMetaclass
 
     def __init__(self, g, mappedClass, query, columns, defaultSortClause=None):
@@ -55,6 +55,8 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         builder = QueryBuilder(self.baseQuery, self.mappedClass)
         for clause in reversed(self.sortClauses):
             clause.sort(builder)
+        print
+        print builder.query
         self._query = builder.query
         self._rows = int(self._query.count())
         self.pages = [None] * (self._rows // self._pagesize + 1)
@@ -205,7 +207,6 @@ class PokemonModel(BaseQueryModel):
     - otherwise, don't collapse anything at all. (0)
     Picture/form name can always be collapsed.
     """
-    _pagesize = 100
     def __init__(self, g, columns):
         mappedClass = tables.PokemonForm
         query = g.session.query(mappedClass)
@@ -238,11 +239,15 @@ class PokemonModel(BaseQueryModel):
     def __getitem__(self, i):
         if not self.collapsing:
             return super(PokemonModel, self).__getitem__(i)
+        # For the case of self[i] being collapsed, we need to load self[i+1]
         while len(self.items) <= i + 1:
             try:
                 nextitem = super(PokemonModel, self).__getitem__(self.nextindex)
             except IndexError:
-                break
+                if len(self.items) > i:
+                    break
+                else:
+                    raise
             else:
                 self.nextindex += 1
                 key = self.collapseKey(nextitem)
@@ -354,31 +359,54 @@ class QueryBuilder(object):
         """
         return self.joinOn(relation, lambda *a: relation, foreignClass)
 
-    def joinOn(self, key, onFactory, foreignClass):
+    def joinOn(self, key, onFactory, foreignClass,
+            secondary=None, secondaryOnFactory=None,
+        ):
         """Join an alias of foreignClass, return the alias
 
         Modifies the query.
         `key`: a unique key identifying the particular join. If the key was
-        already used, the pre-existing alias is returned.
+            already used, the pre-existing alias is returned.
         `onFactory`: a function that takes the aliased table and returns a
-        relation or where-clause to join on
+            relation or where-clause to join on
+        `secondary`, secondaryJoinFactory: Can be used for a intermediary
+            table. If present, each onFactory will receive two arguments:
+            the aliased foreignClass and the intermediary alias.
         """
         try:
             return self._relations[key][0]
         except KeyError:
             aliasedClass = aliased(foreignClass)
             self._relations[key] = aliasedClass, {}
-            self.query = self.query.join((
-                    aliasedClass,
-                    onFactory(aliasedClass),
-                ))
+            if secondary is not None:
+                aliasedSecondary = secondary.alias()
+                self.query = self.query.outerjoin((
+                        aliasedSecondary,
+                        secondaryOnFactory(aliasedClass, aliasedSecondary),
+                    ))
+                self.query = self.query.outerjoin((
+                        aliasedClass,
+                        onFactory(aliasedClass, aliasedSecondary),
+                    ))
+            else:
+                self.query = self.query.outerjoin((
+                        aliasedClass,
+                        onFactory(aliasedClass),
+                    ))
             return aliasedClass
 
-    def subbuilder(self, relation, foreignClass):
+    def subbuilder(self, relation, foreignClass, **kwargs):
         """Make a new builder that operates on a joined class
         """
-        aliasedClass = self.join(relation, foreignClass)
+        aliasedClass = self.join(relation, foreignClass, **kwargs)
         return QueryBuilder(None, aliasedClass,
                 _relations=self._relations[relation][1], _query=self._query)
+
+    def subbuilderOn(self, key, onFactory, foreignClass, **kwargs):
+        """As subbuilder, but joins using joinOn
+        """
+        aliasedClass = self.joinOn(key, onFactory, foreignClass, **kwargs)
+        return QueryBuilder(None, aliasedClass,
+                _relations=self._relations[key][1], _query=self._query)
 
 

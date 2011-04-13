@@ -14,12 +14,20 @@ children:
             -   class: PokemonNameColumn
                 name: !_ {message: Pokémon, context: pokemon column name}
             -   name: !_ Order
-                attr: form_base_pokemon
                 class: PokemonColumn
                 foreignColumn:
                     attr: order
-            -   class: PokemonTypeColumn
-                name: !_ {message: Type, context: pokemon column name}
+            -   name: !_ {message: Type, context: pokemon column name}
+                class: PokemonColumn
+                foreignColumn:
+                    class: AssociationListColumn
+                    attr: types
+                    orderAttr: slot
+                    separator: "/"
+                    orderValues: [1, 2]
+                    foreignColumn:
+                        attr: name
+                        class: LocalStringColumn
     -   name: !_ Moves
         icon: [pokedex, data/media/items/tm-normal.png]
         model:

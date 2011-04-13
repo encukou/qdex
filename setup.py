@@ -7,6 +7,7 @@ setup(
     install_requires = [
         'pokedex',
         'forrin',
+        'sqlalchemy>=0.7.0b3',
         'pyyaml>=3.0',
         'PySide>=1.0',
     ],

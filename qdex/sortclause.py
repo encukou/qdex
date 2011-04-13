@@ -32,11 +32,12 @@ class SortClause(object):
     def sort(self, builder):
         """Sort the query in the given QueryBuilder
         """
-        for column in reversed(self.orderColumns(builder)):
+        for column in tuple(self.orderColumns(builder)):
             if self.descending:
-                builder.query = builder.query.order_by(column.desc())
+                order = column.desc().nullslast()
             else:
-                builder.query = builder.query.order_by(column.asc())
+                order = column.asc().nullsfirst()
+            builder.query = builder.query.order_by(order)
 
     def orderColumns(self, builder):
         """Return DB columns used by the clause based on the given Builder
@@ -81,9 +82,9 @@ class GameStringSortClause(SortClause):
                 translationClass)
         dbcolumn = getattr(translationClass, self.column.attr)
         if self.descending:
-            builder.query = builder.query.order_by(dbcolumn.desc())
+            builder.query = builder.query.order_by(dbcolumn.desc().nullslast())
         else:
-            builder.query = builder.query.order_by(dbcolumn.asc())
+            builder.query = builder.query.order_by(dbcolumn.asc().nullsfist())
 
 class LocalStringSortClause(SortClause):
     """Translated-message sort clause for strings in the "UI language(s)"
@@ -108,9 +109,10 @@ class LocalStringSortClause(SortClause):
             default = None
         query = builder.query
         if self.descending:
-            query = query.order_by(case(whens, else_=default).desc())
+            order = case(whens, else_=default).desc().nullslast()
         else:
-            query = query.order_by(case(whens, else_=default).asc())
+            order = case(whens, else_=default).asc().nullsfirst()
+        query = query.order_by(order)
         builder.query = query
 
 class ForeignKeySortClause(SortClause):
@@ -129,3 +131,17 @@ class ForeignKeySortClause(SortClause):
                 self.column.foreignColumn.mappedClass,
             )
         self.foreignClause.sort(subbuilder)
+
+class AssociationListSortClause(SortClause):
+    """Proxy sort clause, for use with a ForeignKeyColumn
+
+    Set `join` to True to disable joining the proxied class
+    """
+    def __init__(self, column, descending=False, **kwargs):
+        SortClause.__init__(self, column, descending)
+        self.foreignClause = self.column.foreignColumn.getSortClause(
+                descending=self.descending, **kwargs)
+
+    def sort(self, builder):
+        for subbuilder in self.column.getOrderSubbuilders(builder):
+            self.foreignClause.sort(subbuilder)

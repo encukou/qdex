@@ -9,13 +9,15 @@ A query models for pokémon
 from PySide import QtGui, QtCore
 Qt = QtCore.Qt
 
+from sqlalchemy.sql.expression import and_
+
 from pokedex.db import tables, media
 
-from qdex.delegate import PokemonDelegate, PokemonNameDelegate
+from qdex.delegate import PokemonDelegate
 from qdex.loadableclass import LoadableMetaclass
 
 from qdex.sortclause import (SimpleSortClause, GameStringSortClause,
-        LocalStringSortClause, ForeignKeySortClause)
+        LocalStringSortClause, ForeignKeySortClause, AssociationListSortClause)
 
 from qdex.pokedexhelpers import getTranslationClass
 
@@ -67,6 +69,8 @@ class ModelColumn(object):
     def orderColumns(self, builder):
         """Return key(s) that are used to order this column.
         Order clauses referencing the same keys are redundant.
+
+        May return an iterable.
 
         Usually (for SimpleSortClause), these are ORM column properties.
         """
@@ -164,7 +168,7 @@ class ForeignKeyColumn(SimpleModelColumn):
         if foreignMappedClass is None:
             for column in self.mappedClass.__table__.c:
                 if column.name == attr + '_id':
-                    foreignKey = column.foreign_keys[0]
+                    (foreignKey, ) = column.foreign_keys
                     table = foreignKey.column.table
                     for cls in tables.mapped_classes:
                         if cls.__table__ == table:
@@ -204,7 +208,74 @@ class PokemonColumn(ForeignKeyColumn):
     """
     def __init__(self, **kwargs):
         ForeignKeyColumn.__init__(self, foreignMappedClass=tables.Pokemon,
-                **kwargs)
+                attr='form_base_pokemon', **kwargs)
+
+class AssociationListColumn(SimpleModelColumn):
+    """A proxy column that gives information about an AssociationProxy.
+
+    `foreignColumn` is a column for the referenced table
+
+    `orderAttr` is an attribute on the linking class by which the values are
+    ordered.
+    `orderValues` are the values of orderAttr that the column gets sorted by.
+    """
+    def __init__(self, orderAttr, orderValues, separator, foreignColumn,
+            foreignMappedClass=None, **kwargs):
+        SimpleModelColumn.__init__(self, **kwargs)
+        self.orderAttr = orderAttr
+        self.orderValues = orderValues
+        self.separator = separator
+        # XXX: A better way to get stuff from the relation?
+        relation = getattr(self.mappedClass, self.attr)
+        self.secondaryTable = relation.property.secondary
+        foreignMappedClass = relation.property.mapper.class_
+        # Find the proper columns... this ain't that nice :(
+        for column in relation.property.secondary.c:
+            if column.foreign_keys:
+                (foreignKey,) = column.foreign_keys
+                if foreignKey.column.table == self.mappedClass.__table__:
+                    self.primaryColumnName = column.name
+                elif foreignKey.column.table == foreignMappedClass.__table__:
+                    self.secondaryColumnName = column.name
+        # Check that we did get them
+        assert all((self.primaryColumnName, self.secondaryColumnName))
+        self.foreignColumn = ModelColumn.load(foreignColumn,
+                mappedClass=foreignMappedClass, model=self.model)
+
+    def data(self, item, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            subitems = getattr(item, self.attr)
+            data = [self.foreignColumn.data(si, role) for si in subitems]
+            return self.separator.join(str(d) for d in data)
+
+    def orderColumns(self, builder):
+        for subbuilder in self.getOrderSubbuilders(builder):
+            for column in self.foreignColumn.orderColumns(subbuilder):
+                yield column
+
+    def getOrderSubbuilders(self, builder):
+        """Get a sub-builder for each item in the list we're ordering by
+        """
+        for i, value in enumerate(self.orderValues):
+            subbuilder = builder.subbuilderOn(
+                    (self, i),
+                    lambda aliasedClass, aliasedSecondary: and_(
+                            aliasedSecondary.c[self.secondaryColumnName] ==
+                                    aliasedClass.id,
+                        ),
+                    self.foreignColumn.mappedClass,
+                    secondary = self.secondaryTable,
+                    secondaryOnFactory = lambda aliasedClass,
+                        aliasedSecondary: and_(
+                            aliasedSecondary.c[self.primaryColumnName] ==
+                                    builder.mappedClass.id,
+                            aliasedSecondary.c[self.orderAttr] == value,
+                        ),
+                )
+            yield subbuilder
+
+    def getSortClause(self, descending=True, **kwargs):
+        return AssociationListSortClause(self, descending, **kwargs)
 
 class PokemonNameColumn(SimpleModelColumn):
     """Display the pokémon name & icon"""
@@ -258,33 +329,3 @@ class PokemonNameColumn(SimpleModelColumn):
                 tables.Pokemon.names_table,
             )
         return [names.name]
-
-class PokemonTypeColumn(ModelColumn):
-    """Display the pokémon type/s"""
-    delegate = PokemonNameDelegate
-
-    def data(self, form, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole:
-            g = self.model.g
-            return '/'.join(g.name(t) for t in form.pokemon.types)
-        elif role == Qt.UserRole:
-            return form.pokemon.types
-
-    def collapsedData(self, forms, role=Qt.DisplayRole):
-        if role == Qt.UserRole:
-            typesFirst = forms[0].pokemon.types
-            typesFirstSet = set(typesFirst)
-            typesOther = [f.pokemon.types for f in forms[1:]]
-            commonTypes = typesFirstSet.intersection(*typesOther)
-            allTypes = typesFirstSet.union(*typesOther)
-            extraTypes = allTypes - commonTypes
-            commonTypes = sorted(commonTypes, key=typesFirst.index)
-            if extraTypes:
-                commonTypes.append(None)
-            return commonTypes
-        elif role == Qt.DisplayRole:
-            g = self.model.g
-            types = self.collapsedData(forms, Qt.UserRole)
-            return '/'.join(g.name(t) if t else '...' for t in types)
-        else:
-            return self.data(forms[0], role)
