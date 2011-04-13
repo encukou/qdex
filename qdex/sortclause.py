@@ -84,7 +84,7 @@ class GameStringSortClause(SortClause):
         if self.descending:
             builder.query = builder.query.order_by(dbcolumn.desc().nullslast())
         else:
-            builder.query = builder.query.order_by(dbcolumn.asc().nullsfist())
+            builder.query = builder.query.order_by(dbcolumn.asc().nullsfirst())
 
 class LocalStringSortClause(SortClause):
     """Translated-message sort clause for strings in the "UI language(s)"
