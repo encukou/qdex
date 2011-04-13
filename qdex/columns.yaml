@@ -11,18 +11,49 @@ Pokemon:
             identifier: pokemon
             class: PokemonNameColumn
         -   name: !_ Type
-            identifier: types
-            class: PokemonTypeColumn
+            class: PokemonColumn
+            foreignColumn:
+                class: AssociationListColumn
+                attr: types
+                orderAttr: slot
+                separator: "/"
+                orderValues: [1, 2]
+                foreignColumn:
+                    attr: name
+                    class: LocalStringColumn
         -   ---
         -   name: !_ Abilities
-            class: PokemonAbilityColumn
-            slots: [1, 2]
+            class: PokemonColumn
+            foreignColumn:
+                class: AssociationListColumn
+                attr: abilities
+                orderAttr: slot
+                separator: ", "
+                orderValues: [1, 2]
+                foreignColumn:
+                    attr: name
+                    class: GameStringColumn
         -   name: !_ Dream Ability
-            class: PokemonAbilityColumn
-            slots: [3]
+            class: PokemonColumn (n/a)
+            foreignColumn:
+                class: AssociationValueColumn
+                attr: abilities
+                orderAttr: slot
+                value: 3
+                foreignColumn:
+                    attr: name
+                    class: GameStringColumn
         -   name: !_ All Abilities
-            class: PokemonAbilityColumn
-            slots: [1, 2, 3]
+            class: PokemonColumn
+            foreignColumn:
+                class: AssociationListColumn
+                attr: all_abilities
+                orderAttr: slot
+                separator: ", "
+                orderValues: [1, 2, 3]
+                foreignColumn:
+                    attr: name
+                    class: GameStringColumn
     -   name: !_ Battler's
         class: ColumnGroup
         columns:
@@ -68,14 +99,17 @@ Pokemon:
                 class: PokemonEXPNeededColumn
             -   name: !_ Base EXP
                 class: PokemonColumn
-                attr: base_experience
+                foreignColumn:
+                    attr: base_experience
             -   name: !_ EXP Given
                 class: PokemonEXPGivenColumn
     -   name: !_ Collector's
         class: ColumnGroup
         columns:
         -   name: !_ Capture Rate
-            class: PokemonNumberColumn
+            class: PokemonColumn
+            foreignColumn:
+                attr: capture_rate
         -   name: !_ Base Tameness
             class: PokemonNumberColumn
             attr: base_happiness
@@ -91,9 +125,18 @@ Pokemon:
         -   name: !_ Gender rate
             class: PokemonGenderColumn
         -   name: !_ Egg groups
-            class: PokemonEggGroupColumn
+            class: PokemonColumn
+            foreignColumn:
+                class: AssociationListColumn
+                attr: egg_groups
+                orderAttr: egg_group_id  # XXX: Make this WORK!
+                separator: ", "
+                orderValues: [1, 2]
+                foreignColumn:
+                    attr: name
+                    class: LocalStringColumn
         -   name: !_ Initial Hatch Counter
-            class: PokemonNumberColumn
+            class: PokemonColumn
             attr: hatch_counter
         -   name: !_ Steps to hatch
             class: PokemonStepsToHatchColumn
@@ -104,7 +147,17 @@ Pokemon:
         class: ColumnGroup
         columns:
         -   name: Evolves from
-            class: PokemonPreEvolutionColumn
+            class: PokemonColumn (n/a)
+            foreignColumn:
+                class: ForeignKeyColumn
+                attr: parent_pokemon
+                idAttr: evolves_from_pokemon_id
+                foreignColumn:
+                    class: ForeignKeyColumn
+                    attr: form
+                    idAttr: ???
+                    foreignColumn:
+                        class: PokemonNameColumn
         -   name: Evolution method
             class: PokemonEvolutionMethodColumn
         -   name: Stage Summary  # XXX: Don't forget is_baby!
@@ -115,9 +168,10 @@ Pokemon:
         class: ColumnGroup
         columns:
         -   name: !_ Species  # XXX: Better name!
-            class: PokemonLocalizedColumn
-            attr: species_map
-            format: !_ "%s Pokémon"
+            class: PokemonColumn
+            foreignColumn:
+                class: LocalStringColumn
+                attr: species
         -   name: !_ Pokédex Color
             class: PokemonColorColumn
         -   name: !_ Habitat

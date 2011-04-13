@@ -13,10 +13,6 @@ children:
             columns:
             -   class: PokemonNameColumn
                 name: !_ {message: Pokémon, context: pokemon column name}
-            -   name: !_ Order
-                class: PokemonColumn
-                foreignColumn:
-                    attr: order
             -   name: !_ {message: Type, context: pokemon column name}
                 class: PokemonColumn
                 foreignColumn:

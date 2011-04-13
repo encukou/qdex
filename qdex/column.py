@@ -162,12 +162,13 @@ class ForeignKeyColumn(SimpleModelColumn):
 
     `foreignColumn` is a column for the referenced table
     """
-    def __init__(self, foreignColumn, foreignMappedClass=None, **kwargs):
+    def __init__(self, foreignColumn, foreignMappedClass=None, idAttr=None, **kwargs):
         SimpleModelColumn.__init__(self, **kwargs)
         attr = self.attr
+        idAttr = idAttr or attr + '_id'
         if foreignMappedClass is None:
             for column in self.mappedClass.__table__.c:
-                if column.name == attr + '_id':
+                if column.name == idAttr:
                     (foreignKey, ) = column.foreign_keys
                     table = foreignKey.column.table
                     for cls in tables.mapped_classes:
@@ -178,7 +179,7 @@ class ForeignKeyColumn(SimpleModelColumn):
                         raise AssertionError('Table %s not found' % table.name)
                     break
             else:
-                raise ValueError("Column %s_id not found" % attr)
+                raise ValueError("Column %s not found" % idAttr)
         self.foreignColumn = ModelColumn.load(foreignColumn,
                 mappedClass=foreignMappedClass, model=self.model)
 
@@ -207,7 +208,8 @@ class PokemonColumn(ForeignKeyColumn):
     """A proxy column that gives information about a pokémon through its form.
     """
     def __init__(self, **kwargs):
-        ForeignKeyColumn.__init__(self, foreignMappedClass=tables.Pokemon,
+        foreignMappedClass = kwargs.pop('foreignMappedClass', tables.Pokemon)
+        ForeignKeyColumn.__init__(self, foreignMappedClass=foreignMappedClass,
                 attr='pokemon', **kwargs)
 
 class AssociationListColumn(SimpleModelColumn):
@@ -282,8 +284,9 @@ class PokemonNameColumn(SimpleModelColumn):
     delegate = PokemonDelegate
 
     def __init__(self, **kwargs):
+        mappedClass = kwargs.pop('mappedClass', tables.Pokemon)
         SimpleModelColumn.__init__(self,
-                attr='name', mappedClass=tables.Pokemon, **kwargs)
+                attr='name', mappedClass=mappedClass, **kwargs)
 
     def data(self, form, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
