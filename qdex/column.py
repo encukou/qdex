@@ -229,7 +229,7 @@ class AssociationListColumn(SimpleModelColumn):
         SimpleModelColumn.__init__(self, **kwargs)
         self.orderAttr = orderAttr
         self.orderValues = orderValues
-        self.separator = separator
+        self.separator = unicode(separator)
         # XXX: A better way to get stuff from the relation?
         relation = getattr(self.mappedClass, self.attr)
         self.secondaryTable = relation.property.secondary
@@ -251,7 +251,7 @@ class AssociationListColumn(SimpleModelColumn):
         if role == Qt.DisplayRole:
             subitems = getattr(item, self.attr)
             data = [self.foreignColumn.data(si, role) for si in subitems]
-            return self.separator.join(str(d) for d in data)
+            return self.separator.join(unicode(d) for d in data)
 
     def orderColumns(self, builder):
         for subbuilder in self.getOrderSubbuilders(builder):
