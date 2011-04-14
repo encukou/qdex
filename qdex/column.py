@@ -11,7 +11,8 @@ Qt = QtCore.Qt
 
 from sqlalchemy.sql.expression import and_
 
-from pokedex.db import tables, media
+from pokedex.db import tables
+from pokedex.util import media
 
 from qdex.delegate import PokemonDelegate
 from qdex.loadableclass import LoadableMetaclass
