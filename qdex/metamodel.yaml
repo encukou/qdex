@@ -76,9 +76,6 @@ children:
             class: TableModel
             table: Ability
             columns:
-            -   name: !_ ID
-                attr: id
-                class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
                 class: GameStringColumn
@@ -88,9 +85,6 @@ children:
             class: TableModel
             table: Item
             columns:
-            -   name: !_ ID
-                attr: id
-                class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
                 class: GameStringColumn
@@ -100,9 +94,18 @@ children:
             class: TableModel
             table: Nature
             columns:
-            -   name: !_ ID
-                attr: id
-                class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
                 class: GameStringColumn
+            -   name: !_ Increased Stat
+                attr: increased_stat
+                class: ForeignKeyColumn
+                foreignColumn:
+                    class: LocalStringColumn
+                    attr: name
+            -   name: !_ Decreased Stat
+                attr: decreased_stat
+                class: ForeignKeyColumn
+                foreignColumn:
+                    class: LocalStringColumn
+                    attr: name

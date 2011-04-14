@@ -183,23 +183,23 @@ Pokemon:
             class: ColumnGroup
             columns:
             -   name: !_ Height (meters)
-                class: PokemonMeasurementColumn
+                class: MeasurementColumn
                 attr: height
                 template: "%.1f m"
                 factors: [0.1]
             -   name: !_ Weight (kilograms)
-                class: PokemonMeasurementColumn
+                class: MeasurementColumn
                 attr: weight
                 template: "%.1f kg"
                 factors: [0.1]
             -   ---
             -   name: !_ Height (feet & inches)
-                class: PokemonMeasurementColumn
+                class: MeasurementColumn
                 attr: height
                 template: "%d′%.1f″"
                 factors: [0.32808399, 12]
             -   name: !_ Weight (pounds)
-                class: PokemonMeasurementColumn
+                class: MeasurementColumn
                 attr: weight
                 units: ["%.1f lb"]
                 factors: [0.220462262]
@@ -350,13 +350,148 @@ Type:
                 class: LocalStringColumn
                 attr: name
 Ability:
-    columns: &defaultColumns
-    -   name: !_ ID
-        attr: id
+    columns:
+    -   name: !_ Base
+        class: ColumnGroup
+        columns:
+        -   name: !_ Ability
+            attr: name
+            class: GameStringColumn
+        -   name: !_ Effect Summary
+            identifier: effect-summary
+            class: AbilityShortEffectColumn
+        -   name: !_ Full Effect
+            class: AbilityFullEffectColumn
+    -   name: !_ Professor's
+        class: ColumnGroup
+        columns:
+        -   name: !_ ID number
+            attr: id
+        -   name: !_ Foreign Names
+            class: ForeignNameColumnGroup
+        -   name: !_ Generation
+            class: ForeignKeyColumn
+            attr: generation
+            foreignColumn:
+                attr: id
+    -   name: !_ Trainer's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Pokémon
+            class: AbilityPokemonColumnGroup
+    -   name: !_ Pokéfan's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Flavor Text
+            class: AbilityFlavorTextColumn
+Item:
+    columns:
+    -   name: !_ Base
+        class: ColumnGroup
+        columns:
+        -   name: !_ Item
+            attr: name
+            class: GameStringColumn
+        -   name: !_ Effect Summary
+            identifier: effect-summary
+            class: ItemShortEffectColumn
+        -   name: !_ Full Effect
+            class: ItemFullEffectColumn
+    -   name: !_ Trainer's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Cost
+            attr: cost
+        -   name: !_ Fling Power
+            attr: fling_power
+        -   name: !_ Fling Effect
+            class: ItemFlingEffectColumn
+    -   name: !_ Professor's
+        class: ColumnGroup
+        columns:
+        -   name: !_ ID numbers
+            class: ItemIDColumnGroup
+        -   name: !_ Foreign Names
+            class: ForeignNameColumnGroup
+        -   name: !_ Generation
+            class: ItemGenerationColumn
+    -   name: !_ Berry
+        class: ColumnGroup
+        columns:
+        -   name: !_ Firmness
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: firmness
+        -   name: !_ Natural Gift Power
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: natural_gift_power
+        -   name: !_ Natural Gift Type
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: natural_gift_type
+                class: ForeignKeyColumn
+                foreignColumn:
+                    attr: name
+                    class: LocalStringColumn
+        -   name: !_ Size
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: size
+                template: "%d mm"
+                class: MeasurementColumn
+        -   name: !_ Max. Harvest
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: max_harvest
+        -   name: !_ Growth Time
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: growth_time
+        -   name: !_ Soil Drying Rate
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: soil_dryness
+        -   name: !_ Smoothness
+            attr: berry
+            class: SubclassColumn
+            foreignColumn:
+                attr: smoothness
+Nature:
+    columns:
     -   name: !_ Name
         attr: name
         class: GameStringColumn
-Item:
-    columns: *defaultColumns
-Nature:
-    columns: *defaultColumns
+    - ---
+    -   name: !_ Increased Stat
+        attr: increased_stat
+        class: ForeignKeyColumn
+        foreignColumn:
+            class: LocalStringColumn
+            attr: name
+    -   name: !_ Decreased Stat
+        attr: decreased_stat
+        class: ForeignKeyColumn
+        foreignColumn:
+            class: LocalStringColumn
+            attr: name
+    - ---
+    -   name: !_ Preferred Flavor
+        attr: likes_flavor
+        class: ForeignKeyColumn
+        foreignColumn:
+            class: LocalStringColumn
+            attr: name
+    -   name: !_ Disliked Flavor
+        attr: hated_flavor
+        class: ForeignKeyColumn
+        foreignColumn:
+            class: LocalStringColumn
+            attr: name
