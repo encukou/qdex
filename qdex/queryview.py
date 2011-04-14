@@ -48,10 +48,10 @@ class QueryView(QtGui.QTreeView):
 
         self.g = model.g
         super(QueryView, self).setModel(model)
-        self.connect(QtCore.SIGNAL('columnsInserted'), self.columnsChanged)
-        self.connect(QtCore.SIGNAL('columnsDeleted'), self.columnsChanged)
-        self.connect(QtCore.SIGNAL('columnsMoved'), self.columnsChanged)
-        self.connect(QtCore.SIGNAL('modelReset'), self.columnsChanged)
+        model.columnsInserted.connect(self.columnsChanged)
+        model.columnsDeleted.connect(self.columnsChanged)
+        model.columnsMoved.connect(self.columnsChanged)
+        model.modelReset.connect(self.columnsChanged)
         self.columnsChanged()
         for i in range(self.model().columnCount()):
             self.autoResizeColumn(i)
