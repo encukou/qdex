@@ -339,7 +339,7 @@ class PokemonNameColumn(SimpleModelColumn):
 
     def collapsedData(self, forms, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
-            return "{name} ({forms})".format(
+            return u"{name} ({forms})".format(
                     name=forms[0].pokemon.name,
                     forms=len(forms),
                 )

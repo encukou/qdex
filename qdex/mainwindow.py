@@ -13,12 +13,13 @@ from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 
 from forrin.translator import BaseTranslator
-from pokedex.db import connect, tables
+from pokedex.db import connect, tables, util
 
 from qdex.queryview import QueryView
 from qdex.metamodel import MetaModel, MetaModelView
 
 echo = False
+#echo = True
 
 class Translator(BaseTranslator):
     """Our very own translator"""
@@ -44,10 +45,8 @@ class Global(object):
     def langs(self, langs):
         """UI language identifiers, by priority (highest first)"""
         self._langs = langs
-        self.languages = [(self.session.query(tables.Language)
-                .filter_by(identifier=lang)
-                .one()
-            ) for lang in langs]
+        self.languages = [util.get(self.session, tables.Language, lang)
+                for lang in langs]
         self.translator = Translator(langs)
         if self.mainwindow:
             self.mainwindow.retranslate.emit()
@@ -73,7 +72,8 @@ class Global(object):
             except KeyError:
                 pass
         if fallbackLanguage == None:
-            fallbackLanguage = self.session.defaultLanguage
+            fallbackLanguage = util.get(self.session, tables.Language,
+                    id=self.session.default_language_id)
         try:
             return '[%s: %s]' % (
                     fallbackLanguage.identifier,
@@ -169,7 +169,9 @@ class MainWindow(QtGui.QMainWindow):
         for language in query:
             def _scope(language):
                 def _retranslate():
-                    self.g.session.default_language = language
+                    self.g.session.expunge_all()
+                    self.g.session.default_language_id = language.id
+                    self.g.langs = self.g.langs
                     self.retranslate.emit()
                 name = self.g.name(language)
                 icon = os.path.join('flags', language.iso3166 + '.png')
@@ -177,7 +179,8 @@ class MainWindow(QtGui.QMainWindow):
                 self.addMenuItem(self.gamelangMenu, name, _retranslate,
                         icon=icon,
                         checkable=True,
-                        checked=self.g.session.default_language == language,
+                        checked=self.g.session.default_language_id ==
+                                language.id,
                     )
             _scope(language)
 
