@@ -61,12 +61,15 @@ children:
             class: TableModel
             table: Type
             columns:
-            -   name: !_ ID
-                attr: id
-                class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
                 class: LocalStringColumn
+            -   name: !_ Damage Class (I-III)
+                class: ForeignKeyColumn
+                attr: damage_class
+                foreignColumn:
+                    class: LocalStringColumn
+                    attr: name
     -   name: !_ 'Abilities'
         icon: [qdex, icons/color.png]
         model:

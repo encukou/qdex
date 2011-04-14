@@ -304,11 +304,51 @@ Move:
             class: PokemonFlavorTextColumn
 Type:
     columns:
-    -   name: !_ ID
-        attr: id
-    -   name: !_ Name
-        attr: name
-        class: LocalStringColumn
+    -   name: !_ Base
+        class: ColumnGroup
+        columns:
+        -   name: !_ Type
+            class: LocalStringColumn
+    -   name: !_ Professor's
+        class: ColumnGroup
+        columns:
+        -   name: !_ ID number
+            attr: id
+        -   name: !_ Foreign Names
+            class: ForeignNameColumnGroup
+        -   name: !_ Generation
+            class: ForeignKeyColumn
+            attr: generation
+            foreignColumn:
+                attr: id
+    -   name: !_ Trainer's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Pokémon
+            class: TypePokemonColumnGroup
+        -   name: !_ Moves
+            class: TypeMoveColumnGroup
+    -   name: !_ Battler's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Defensive Score
+            class: TypeScoreColumn
+            direction: defense
+        -   name: !_ Offensive Score
+            class: TypeScoreColumn
+            direction: offense
+        -   name: !_ Effectivity
+            class: TypeScoreColumn
+            direction: offense
+    -   name: !_ Veteran's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Damage Class (I-III)
+            class: ForeignKeyColumn
+            attr: damage_class
+            foreignColumn:
+                class: LocalStringColumn
+                attr: name
 Ability:
     columns: &defaultColumns
     -   name: !_ ID

@@ -125,6 +125,8 @@ class LocalStringColumn(ModelColumn):
         self.translationClass = getTranslationClass(self.mappedClass, attr)
 
     def data(self, item, role=Qt.DisplayRole):
+        if item is None:
+            return None
         if role == Qt.DisplayRole:
             translations = getattr(item, self.mapAttr)
             for language in self.languages:
