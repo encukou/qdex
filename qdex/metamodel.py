@@ -80,12 +80,20 @@ class MetaModel(QtCore.QAbstractItemModel):
     def __init__(self, g, model=None):
         super(MetaModel, self).__init__()
         self.g = g
+        self.g.registerRetranslate(self.retranslated)
         if model is None:
             defaultfile = open(resource_filename('qdex', 'metamodel.yaml'))
             model = yaml.load(defaultfile)
         self.root = MetamodelItem.load(model, g=g)
         # XXX: Only have one category of lists now; show a flat list
         self.root = self.root.children[0]
+
+    def retranslated(self):
+        """Called when the app is retranslated"""
+        self.dataChanged.emit(
+                self.index(0, 0),
+                self.index(self.rowCount() - 1, self.columnCount() - 1),
+            )
 
     def columnCount(self, parent=QtCore.QModelIndex()):
         return 1
