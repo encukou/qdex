@@ -30,9 +30,6 @@ children:
             class: TableModel
             table: Move
             columns:
-            -   name: !_ ID
-                attr: id
-                class: SimpleModelColumn
             -   name: !_ Name
                 attr: name
                 class: GameStringColumn
@@ -42,6 +39,22 @@ children:
                 foreignColumn:
                     attr: name
                     class: LocalStringColumn
+            -   name: !_ Damage class
+                class: ForeignKeyColumn
+                attr: damage_class
+                foreignColumn:
+                    attr: name
+                    class: LocalStringColumn
+            -   name: !_ PP
+                attr: pp
+            -   name: !_ Power
+                attr: power
+            -   name: !_ Accuracy
+                attr: accuracy
+            -   name: !_ Priority
+                attr: priority
+            -   name: !_ Effect Chance
+                attr: effect_chance
     -   name: !_ 'Types'
         icon: [qdex, icons/diamond.png]
         model:

@@ -111,8 +111,9 @@ Pokemon:
             foreignColumn:
                 attr: capture_rate
         -   name: !_ Base Tameness
-            class: PokemonNumberColumn
-            attr: base_happiness
+            class: PokemonColumn
+            foreignColumn:
+                attr: base_happiness
         -   name: !_ Held Items
             class: PokemonHeldItemsColumn
         -   name: !_ Location Summary
@@ -207,18 +208,100 @@ Pokemon:
         -   name: !_ Flavor Text
             class: PokemonFlavorTextColumn
 Move:
-    columns: &defaultColumns
-    -   name: !_ ID
-        attr: id
-    -   name: !_ Name
-        attr: name
-        class: GameStringColumn
-    -   name: !_ Type
-        attr: type
-        class: ForeignKeyColumn
-        foreignColumn:
-            attr: name
-            class: LocalStringColumn
+    columns:
+    -   name: !_ Base
+        class: ColumnGroup
+        columns:
+        -   name: !_ Move
+            identifier: move
+            class: MoveNameColumn
+        -   name: !_ Type
+            attr: type
+            class: ForeignKeyColumn
+            foreignColumn:
+                attr: name
+                class: LocalStringColumn
+        -   name: !_ Damage class
+            class: ForeignKeyColumn
+            attr: damage_class
+            foreignColumn:
+                attr: name
+                class: LocalStringColumn
+        -   name: !_ PP
+            attr: pp
+        -   name: !_ Power
+            attr: power
+        -   name: !_ Accuracy
+            attr: accuracy
+        -   name: !_ Priority
+            attr: priority
+        -   name: !_ Target
+            class: MoveTargetColumn
+        -   name: !_ Effect Chance
+            attr: effect_chance
+        -   name: !_ Effect Summary
+            identifier: short-effect
+            class: MoveShortEffectColumn
+        -   name: !_ Full Effect
+            class: MoveFullEffectColumn
+    -   name: !_ Professor's
+        class: ColumnGroup
+        columns:
+        -   name: !_ ID numbers
+            class: MoveIDColumnGroup
+        -   name: !_ Foreign Names
+            class: ForeignNameColumnGroup
+        -   name: !_ Generation
+            class: ForeignKeyColumn
+            attr: generation
+            foreignColumn:
+                attr: id
+    -   name: !_ Trainer's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Pokémon
+            class: MovePokemonColumnGroup
+        -   name: !_ Machine/Tutor Availability
+            class: MoveMachineColumnGroup
+        -   name: !_ Type effectivity
+            class: MoveTypeColumnGroup
+    -   name: !_ Strategist's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Move Category
+            class: MoveCategoryColumn
+        -   name: !_ Induced Ailment
+            class: MoveAilmentColumn
+        -   name: !_ Ailment Chance
+            class: MoveMetaColumn
+            attr: ailment_chance
+        -   name: !_ Flinch Chance
+            class: MoveMetaColumn
+            attr: flinch_chance
+        -   name: !_ Critical Hit Rate
+            class: MoveMetaColumn
+            attr: crit_rate
+        -   name: !_ Stat Changes
+            class: MoveStatChangeColumnGroup
+        -   name: !_ Hits in 1 turn
+            class: MoveMetaMinMaxColumn
+            attr_base: hits
+        -   name: !_ Duration in Turns
+            class: MoveMetaMinMaxColumn
+            attr_base: turns
+        -   name: !_ Recoil
+            class: MoveMetaColumn
+            attr: recoil
+        -   name: !_ Healing
+            class: MoveMetaColumn
+            attr: healing
+        -   name: !_ Flags
+            class: MoveFlagsColumn
+    -   name: !_ Pokéfan's
+        class: ColumnGroup
+        columns:
+        -   name: !_ Flavor Text
+            class: PokemonFlavorTextColumn
 Type:
     columns:
     -   name: !_ ID
@@ -227,7 +310,12 @@ Type:
         attr: name
         class: LocalStringColumn
 Ability:
-    columns: *defaultColumns
+    columns: &defaultColumns
+    -   name: !_ ID
+        attr: id
+    -   name: !_ Name
+        attr: name
+        class: GameStringColumn
 Item:
     columns: *defaultColumns
 Nature:
