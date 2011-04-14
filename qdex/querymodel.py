@@ -49,9 +49,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             self.defaultSortClause = self.columns[0].getSortClause()
         else:
             self.defaultSortClause = defaultSortClause
-        print self.defaultSortClause
         self.sortClauses = [self.defaultSortClause]
-        print self.sortClauses
         self.filters = []
         self._setQuery()
 
@@ -60,8 +58,6 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         builder = self.baseBuilder()
         for clause in reversed(self.sortClauses):
             clause.sort(builder)
-        print
-        print builder.query
         self._query = builder.query
         self._rows = int(self._query.count())
         self.pages = [None] * (self._rows // self._pagesize + 1)
@@ -230,8 +226,6 @@ class PokemonModel(BaseQueryModel):
 
     def _setQuery(self):
         super(PokemonModel, self)._setQuery()
-        print self.sortClauses
-        print list(c.collapsing for c in self.sortClauses)
         self.collapsing = min(c.collapsing for c in self.sortClauses)
         if self.collapsing == 2:
             countquery = self._query.from_self(tables.Pokemon.identifier)
