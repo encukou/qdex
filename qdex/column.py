@@ -14,7 +14,7 @@ from sqlalchemy.sql.expression import and_
 from pokedex.db import tables
 from pokedex.util import media
 
-from qdex.delegate import PokemonDelegate
+from qdex.delegate import PokemonNameDelegate
 from qdex.loadableclass import LoadableMetaclass
 
 from qdex.sortclause import (SimpleSortClause, GameStringSortClause,
@@ -46,7 +46,7 @@ class ModelColumn(object):
 
     def delegate(self, view):
         """Return a delegate for this column, using the given view"""
-        return QtGui.QStyledItemDelegate()
+        return self.model.defaultDelegateClass(view)
 
     def collapsedData(self, forms, role):
         """Return a summary of data from all `forms`. Used for pokémon columns.
@@ -189,6 +189,10 @@ class ForeignKeyColumn(SimpleModelColumn):
     def data(self, item, role=Qt.DisplayRole):
         return self.foreignColumn.data(getattr(item, self.attr), role)
 
+    def collapsedData(self, items, role=Qt.DisplayRole):
+        subitems = [getattr(item, self.attr) for item in items]
+        return self.foreignColumn.collapsedData(subitems, role)
+
     def delegate(self, view):
         return self.foreignColumn.delegate(view)
 
@@ -208,7 +212,7 @@ class ForeignKeyColumn(SimpleModelColumn):
         return self.foreignColumn.orderColumns(subbuilder)
 
 class PokemonColumn(ForeignKeyColumn):
-    """A proxy column that gives information about a pokémon through its form.
+    """A proxy column that gives information about a pokémon from its form.
     """
     def __init__(self, **kwargs):
         foreignMappedClass = kwargs.pop('foreignMappedClass', tables.Pokemon)
@@ -253,6 +257,24 @@ class AssociationListColumn(SimpleModelColumn):
             data = [self.foreignColumn.data(si, role) for si in subitems]
             return self.separator.join(unicode(d) for d in data)
 
+    def collapsedData(self, items, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole and items:
+            subdata = []
+            for item in items:
+                subitems = getattr(item, self.attr)
+                subdata.append([self.foreignColumn.data(si, role)
+                        for si in subitems])
+            firstData = set(subdata[0])
+            commonData = set(firstData)
+            allData = set(firstData)
+            for data in subdata[1:]:
+                commonData.intersection_update(data)
+                allData.update(data)
+            sortedData = sorted(commonData, key=subdata[0].index)
+            if allData != commonData:
+                sortedData.append('...')
+            return self.separator.join(unicode(d) for d in sortedData)
+
     def orderColumns(self, builder):
         for subbuilder in self.getOrderSubbuilders(builder):
             for column in self.foreignColumn.orderColumns(subbuilder):
@@ -284,7 +306,6 @@ class AssociationListColumn(SimpleModelColumn):
 
 class PokemonNameColumn(SimpleModelColumn):
     """Display the pokémon name & icon"""
-    delegate = PokemonDelegate
 
     def __init__(self, **kwargs):
         mappedClass = kwargs.pop('mappedClass', tables.Pokemon)
@@ -324,6 +345,13 @@ class PokemonNameColumn(SimpleModelColumn):
                 )
         else:
             return self.data(forms[0], role)
+
+    def delegate(self, view):
+        """Return a delegate for this column, using the given view"""
+        return PokemonNameDelegate(view)
+
+    def getSortClause(self, descending=False):
+        return SimpleSortClause(self, descending, collapsing=2)
 
     def orderColumns(self, builder):
         subbuilder = builder.subbuilder(

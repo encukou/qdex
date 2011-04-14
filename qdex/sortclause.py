@@ -18,9 +18,11 @@ class SortClause(object):
     __metaclass__ = LoadableMetaclass
     collapsing = 1
 
-    def __init__(self, column, descending=False):
+    def __init__(self, column, descending=False, collapsing=None):
         self.column = column
         self.descending = descending
+        if collapsing:
+            self.collapsing = collapsing
 
     def save(self):
         """Get this clause's representation as a simple dict

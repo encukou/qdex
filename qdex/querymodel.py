@@ -18,6 +18,7 @@ from qdex.column import ModelColumn
 from qdex.loadableclass import LoadableMetaclass
 from qdex.sortclause import DefaultPokemonSortClause
 from qdex.pokedexhelpers import default_language_param
+from qdex.delegate import PokemonDelegate
 
 class ModelMetaclass(LoadableMetaclass, type(QtCore.QAbstractItemModel)):
     """Merged metaclass"""
@@ -177,6 +178,8 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
 
 class TableModel(BaseQueryModel):
     """Model that displays a DB table"""
+    defaultDelegateClass = QtGui.QStyledItemDelegate
+
     def __init__(self, g, table, columns):
         if isinstance(table, basestring):
             tableName = table
@@ -213,6 +216,8 @@ class PokemonModel(BaseQueryModel):
     - otherwise, don't collapse anything at all. (0)
     Picture/form name can always be collapsed.
     """
+    defaultDelegateClass = PokemonDelegate
+
     def __init__(self, g, columns):
         mappedClass = tables.PokemonForm
         query = g.session.query(mappedClass)
