@@ -49,7 +49,7 @@ class QueryView(QtGui.QTreeView):
         self.g = model.g
         super(QueryView, self).setModel(model)
         model.columnsInserted.connect(self.columnsChanged)
-        model.columnsDeleted.connect(self.columnsChanged)
+        model.columnsRemoved.connect(self.columnsChanged)
         model.columnsMoved.connect(self.columnsChanged)
         model.modelReset.connect(self.columnsChanged)
         self.columnsChanged()

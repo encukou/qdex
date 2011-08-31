@@ -1,7 +1,7 @@
 %YAML 1.1
 %TAG ! tag:encukou.cz,2011:forrin/
 ---
-Pokemon:
+PokemonForm:
     #model: PokemonQueryModel
     columns:
     -   name: !_ Base
@@ -107,11 +107,11 @@ Pokemon:
         class: ColumnGroup
         columns:
         -   name: !_ Capture Rate
-            class: PokemonColumn
+            class: SpeciesColumn
             foreignColumn:
                 attr: capture_rate
         -   name: !_ Base Tameness
-            class: PokemonColumn
+            class: SpeciesColumn
             foreignColumn:
                 attr: base_happiness
         -   name: !_ Held Items
@@ -124,9 +124,9 @@ Pokemon:
         class: ColumnGroup
         columns:
         -   name: !_ Gender rate
-            class: PokemonGenderColumn
+            class: SpeciesGenderColumn
         -   name: !_ Egg groups
-            class: PokemonColumn
+            class: SpeciesColumn
             foreignColumn:
                 class: AssociationListColumn
                 attr: egg_groups
@@ -137,8 +137,9 @@ Pokemon:
                     attr: name
                     class: LocalStringColumn
         -   name: !_ Initial Hatch Counter
-            class: PokemonColumn
-            attr: hatch_counter
+            class: SpeciesColumn
+            foreignColumn:
+                attr: hatch_counter
         -   name: !_ Steps to hatch
             class: PokemonStepsToHatchColumn
             attr: hatch_counter
@@ -169,10 +170,10 @@ Pokemon:
         class: ColumnGroup
         columns:
         -   name: !_ Species  # XXX: Better name!
-            class: PokemonColumn
+            class: SpeciesColumn
             foreignColumn:
                 class: LocalStringColumn
-                attr: species
+                attr: genus
         -   name: !_ Pokédex Color
             class: PokemonColorColumn
         -   name: !_ Habitat
@@ -490,7 +491,7 @@ Nature:
             class: LocalStringColumn
             attr: name
     -   name: !_ Disliked Flavor
-        attr: hated_flavor
+        attr: hates_flavor
         class: ForeignKeyColumn
         foreignColumn:
             class: LocalStringColumn

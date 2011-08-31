@@ -70,9 +70,25 @@ class DefaultPokemonSortClause(SimpleSortClause):
     def orderColumns(self, builder):
         """Return DB the columns used by this clause
         """
-        pokemon = builder.join(builder.mappedClass.form_base_pokemon,
+        pokemon = builder.join(builder.mappedClass.pokemon,
                 tables.Pokemon)
-        return [pokemon.order, builder.mappedClass.id]
+        return [pokemon.order]
+
+class PokemonNameSortClause(SortClause):
+    collapsing = 2
+
+    def sort(self, builder):
+        """Sort the query in the given QueryBuilder
+        """
+        species_name, form_name, form_identifier = self.orderColumns(builder)
+        if self.descending:
+            builder.query = builder.query.order_by(species_name.desc())
+            builder.query = builder.query.order_by(form_identifier != None)
+            builder.query = builder.query.order_by(form_name.desc())
+        else:
+            builder.query = builder.query.order_by(species_name.asc())
+            builder.query = builder.query.order_by(form_identifier == None)
+            builder.query = builder.query.order_by(form_name.asc())
 
 class GameStringSortClause(SortClause):
     """Translated-message sort clause for strings in the "game language"

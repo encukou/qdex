@@ -16,9 +16,10 @@ from pokedex.util import media
 
 from qdex.delegate import PokemonNameDelegate
 from qdex.loadableclass import LoadableMetaclass
-
+from qdex import media_root
 from qdex.sortclause import (SimpleSortClause, GameStringSortClause,
-        LocalStringSortClause, ForeignKeySortClause, AssociationListSortClause)
+        LocalStringSortClause, ForeignKeySortClause, AssociationListSortClause,
+        PokemonNameSortClause)
 
 from qdex.pokedexhelpers import getTranslationClass
 
@@ -219,6 +220,14 @@ class PokemonColumn(ForeignKeyColumn):
         ForeignKeyColumn.__init__(self, foreignMappedClass=foreignMappedClass,
                 attr='pokemon', **kwargs)
 
+class SpeciesColumn(ForeignKeyColumn):
+    """A proxy column that gives information about a pokémon species from its form.
+    """
+    def __init__(self, **kwargs):
+        foreignMappedClass = kwargs.pop('foreignMappedClass', tables.PokemonSpecies)
+        ForeignKeyColumn.__init__(self, foreignMappedClass=foreignMappedClass,
+                attr='species', **kwargs)
+
 class AssociationListColumn(SimpleModelColumn):
     """A proxy column that gives information about an AssociationProxy.
 
@@ -315,9 +324,9 @@ class PokemonNameColumn(SimpleModelColumn):
     def data(self, form, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             g = self.model.g
-            formName = g.name(form)
+            formName = form.name
             if formName:
-                return u'{0} {1}'.format(formName, form.pokemon.name)
+                return formName
             else:
                 return form.pokemon.name
         elif role == Qt.DecorationRole:
@@ -329,7 +338,7 @@ class PokemonNameColumn(SimpleModelColumn):
                 key = "flipped pokemon icon/%s" % form.id
                 pixmap = QtGui.QPixmap()
                 if not QtGui.QPixmapCache.find(key, pixmap):
-                    pixmap.load(media.PokemonFormMedia(form).icon().path)
+                    pixmap.load(media.PokemonFormMedia(media_root, form).icon().path)
                     transform = QtGui.QTransform.fromScale(-1, 1)
                     pixmap = pixmap.transformed(transform)
                     QtGui.QPixmapCache.insert(key, pixmap)
@@ -340,7 +349,7 @@ class PokemonNameColumn(SimpleModelColumn):
     def collapsedData(self, forms, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             return u"{name} ({forms})".format(
-                    name=forms[0].pokemon.name,
+                    name=forms[0].species.name,
                     forms=len(forms),
                 )
         else:
@@ -351,15 +360,19 @@ class PokemonNameColumn(SimpleModelColumn):
         return PokemonNameDelegate(view)
 
     def getSortClause(self, descending=False):
-        return SimpleSortClause(self, descending, collapsing=2)
+        return PokemonNameSortClause(self, descending)
 
     def orderColumns(self, builder):
-        subbuilder = builder.subbuilder(
-                builder.mappedClass.pokemon,
-                tables.Pokemon,
-            )
-        names = builder.join(
-                subbuilder.mappedClass.names_local,
-                tables.Pokemon.names_table,
-            )
-        return [names.name]
+        pokemon_builder = builder.subbuilder(builder.mappedClass.pokemon,
+                tables.Pokemon)
+        species_builder = pokemon_builder.subbuilder(pokemon_builder.mappedClass.species,
+                tables.PokemonSpecies)
+        name_builder = species_builder.subbuilder(species_builder.mappedClass.names_local,
+                tables.PokemonSpecies.names_table)
+        formname_builder = builder.subbuilder(builder.mappedClass.names_local,
+                tables.PokemonForm.names_table)
+        return [
+                name_builder.mappedClass.name,
+                formname_builder.mappedClass.form_name,
+                builder.mappedClass.form_identifier,
+            ]

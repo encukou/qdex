@@ -7,8 +7,14 @@ Runner module.
 """
 
 import sys
+import os.path
 from PySide import QtCore, QtGui
 Qt = QtCore.Qt
+
+import pkg_resources
+
+media_root = os.path.join(pkg_resources.resource_filename('pokedex', '.'),
+        '..', '..', 'pokedex-media')
 
 from qdex.mainwindow import MainWindow
 

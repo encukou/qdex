@@ -6,6 +6,8 @@
 Metamodel: Contains other models
 """
 
+import os.path
+
 from pkg_resources import resource_filename
 
 from PySide import QtCore, QtGui
@@ -14,6 +16,7 @@ Qt = QtCore.Qt
 from qdex.querymodel import TableModel
 from qdex.loadableclass import LoadableMetaclass
 from qdex import yaml
+from qdex import media_root
 
 # XXX: Move the default contents somewhere else
 
@@ -40,7 +43,10 @@ class MetamodelItem(object):
         if isinstance(icon, basestring):
             self._icon = QtGui.QIcon(icon)
         elif isinstance(icon, list):
-            self._icon = QtGui.QIcon(resource_filename(*icon))
+            if icon[0] == 'pokedex-media':
+                self._icon = QtGui.QIcon(os.path.join(media_root, *icon[1:]))
+            else:
+                self._icon = QtGui.QIcon(resource_filename(*icon))
         else:
             #raise AssertionError("Can't set icon directly")
             self._icon = icon

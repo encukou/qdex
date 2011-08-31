@@ -26,9 +26,9 @@ class PokemonDelegate(QtGui.QStyledItemDelegate):
             or None to choose based on the state of the view
 
         It's not too easy to hijack the QItemDelegate pipeling with custom
-        data, so we hack around this by storing the summary in a child with
-        row -1 (which isn't accessible from normal views), and switching to
-        that when necessary.
+        data, so we hack around this by shifting the children: the first form
+        is stored in in row -1 (which isn't accessible from normal views).
+        The parent switches to show this special child when it is expanded.
         """
         if summary is False:
             return index
@@ -36,7 +36,7 @@ class PokemonDelegate(QtGui.QStyledItemDelegate):
         hasChildren = index.model().hasChildren(parent)
         if summary is None:
             summary = hasChildren and not self.view.isExpanded(parent)
-        if summary and hasChildren:
+        if not summary and hasChildren:
             return parent.child(-1, index.column())
         else:
             return index
@@ -62,4 +62,3 @@ class PokemonNameDelegate(PokemonDelegate):
     def paint(self, painter, option, index):
         option.decorationAlignment = Qt.AlignBottom | Qt.AlignHCenter
         super(PokemonNameDelegate, self).paint(painter, option, index)
-

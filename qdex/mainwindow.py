@@ -17,6 +17,7 @@ from pokedex.db import connect, tables, util
 
 from qdex.queryview import QueryView
 from qdex.metamodel import MetaModel, MetaModelView
+from qdex import media_root
 
 echo = False
 #echo = True
@@ -96,7 +97,7 @@ class MainWindow(QtGui.QMainWindow):
         super(MainWindow, self).__init__()
         self.g = Global(mainwindow=self, **globalArgs)
         self.g.registerRetranslate(self.retranslateUi)
-        icon = resource_filename('pokedex', u'data/media/items/poké-ball.png')
+        icon = os.path.join(media_root, 'items', 'poke-ball.png')
         self.setWindowIcon(QtGui.QIcon(icon))
 
         splitter = QtGui.QSplitter(self)

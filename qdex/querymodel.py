@@ -10,7 +10,7 @@ from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 
 from sqlalchemy.sql.expression import and_, or_
-from sqlalchemy.orm import contains_eager, lazyload, aliased
+from sqlalchemy.orm import contains_eager, lazyload, aliased, eagerload
 from pokedex.db import tables
 import traceback
 
@@ -222,57 +222,34 @@ class PokemonModel(BaseQueryModel):
         mappedClass = tables.PokemonForm
         query = g.session.query(mappedClass)
         query = query.join(tables.PokemonForm.pokemon)
-        query = query.options(contains_eager('pokemon'))
-        query = query.options(lazyload('pokemon.names'))
+        query = query.join(tables.Pokemon.species)
+        query = query.options(eagerload('pokemon'))
+        query = query.options(eagerload('pokemon.forms'))
+        query = query.options(eagerload('pokemon.species'))
+        query = query.options(eagerload('pokemon.species.forms'))
         BaseQueryModel.__init__(self, g, mappedClass, query, columns,
                 defaultSortClause=DefaultPokemonSortClause())
-        self.tableName = 'Pokemon'
+        self.tableName = 'PokemonForm'
         self._hack_small_icons = False
-
-    def _setQuery(self):
-        super(PokemonModel, self)._setQuery()
-        self.collapsing = min(c.collapsing for c in self.sortClauses)
-        if self.collapsing == 2:
-            countquery = self._query.from_self(tables.Pokemon.identifier)
-            self._rows = int(countquery.distinct().count())
-            self.collapseKey = lambda pf: pf.pokemon.identifier
-        elif self.collapsing == 1:
-            countquery = self._query.from_self(tables.Pokemon.id)
-            self._rows = int(countquery.distinct().count())
-            self.collapseKey = lambda pf: pf.pokemon.id
-        else:
-            # self._rows set by superclass
-            self.collapseKey = lambda pf: pf.pokemon.id
-        self.items = []
-        self.nextindex = 0
-        self.collapsed = {}
 
     def baseBuilder(self):
         builder = super(PokemonModel, self).baseBuilder()
-        builder.setIncluded(tables.PokemonForm.pokemon, tables.Pokemon)
+        builder.setIncluded(tables.PokemonSpecies.pokemon, tables.Pokemon)
+        builder.setIncluded(tables.Pokemon.forms, tables.PokemonForm)
+        self.collapsing = min(c.collapsing for c in self.sortClauses)
+        if self.collapsing >= 2:
+            builder.query = builder.query.filter(tables.Pokemon.is_default == True)
+        if self.collapsing >= 1:
+            builder.query = builder.query.filter(tables.PokemonForm.is_default == True)
         return builder
 
-    def __getitem__(self, i):
-        if not self.collapsing:
-            return super(PokemonModel, self).__getitem__(i)
-        # For the case of self[i] being collapsed, we need to load self[i+1]
-        while len(self.items) <= i + 1:
-            try:
-                nextitem = super(PokemonModel, self).__getitem__(self.nextindex)
-            except IndexError:
-                if len(self.items) > i:
-                    break
-                else:
-                    raise
-            else:
-                self.nextindex += 1
-                key = self.collapseKey(nextitem)
-                if key in self.collapsed:
-                    self.collapsed[key].append(nextitem)
-                else:
-                    self.items.append(nextitem)
-                    self.collapsed[key] = []
-        return self.items[i]
+    def forms_for(self, form):
+        if self.collapsing == 2:
+            return form.species.forms
+        elif self.collapsing == 1:
+            return form.pokemon.forms
+        else:
+            return [form]
 
     def index(self, row, column, parent=QtCore.QModelIndex()):
         if 0 <= column < self.columnCount():
@@ -288,8 +265,7 @@ class PokemonModel(BaseQueryModel):
         if not parent.isValid():
             return self._rows
         elif parent.internalId() == -1:
-            key = self.collapseKey(self[parent.row()])
-            return len(self.collapsed[key])
+            return len(self.forms_for(self[parent.row()])) - 1
         else:
             return 0
 
@@ -305,17 +281,19 @@ class PokemonModel(BaseQueryModel):
             return False
 
     def data(self, index, role=Qt.DisplayRole):
-        if index.row() >= 0:
-            return super(PokemonModel, self).data(index, role)
-        else:
-            item = self[index.internalId()]
-            column = self.columns[index.column()]
-            extraItems = self.collapsed[self.collapseKey(item)]
-            if extraItems:
-                items = [item] + extraItems
-                return column.collapsedData(items, role)
+        # See discussion in PokemonDelegate.indexToShow
+        column = self.columns[index.column()]
+        if index.internalId() == -1:
+            form = self[index.row()]
+            forms = self.forms_for(form)
+            if len(forms) == 1:
+                return column.data(form, role)
             else:
-                return column.data(item, role)
+                return column.collapsedData(forms, role)
+        else:
+            forms = self.forms_for(self[index.internalId()])
+            column = self.columns[index.column()]
+            return column.data(forms[index.row() + 1], role)
 
     def parent(self, index):
         iid = index.internalId()

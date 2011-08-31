@@ -7,7 +7,7 @@ children:
     icon: [qdex, icons/folder-horizontal.png]
     children:
     -   name: !_ {message: Pokémon, context: plural}
-        icon: [pokedex, data/media/items/poke-ball.png]
+        icon: [pokedex-media, items/poke-ball.png]
         model:
             class: PokemonModel
             columns:
@@ -25,7 +25,7 @@ children:
                         attr: name
                         class: LocalStringColumn
     -   name: !_ Moves
-        icon: [pokedex, data/media/items/tm-normal.png]
+        icon: [pokedex-media, items/tm-normal.png]
         model:
             class: TableModel
             table: Move
@@ -80,7 +80,7 @@ children:
                 attr: name
                 class: GameStringColumn
     -   name: !_ 'Items'
-        icon: [pokedex, data/media/items/rare-candy.png]
+        icon: [pokedex-media, items/rare-candy.png]
         model:
             class: TableModel
             table: Item
