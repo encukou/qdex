@@ -8,7 +8,6 @@ The main pokédex window
 
 import os
 
-from pkg_resources import resource_filename
 from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 
@@ -17,7 +16,7 @@ from pokedex.db import connect, tables, util
 
 from qdex.queryview import QueryView
 from qdex.metamodel import MetaModel, MetaModelView
-from qdex import media_root
+from qdex import resource_filename
 
 echo = False
 #echo = True
@@ -97,7 +96,7 @@ class MainWindow(QtGui.QMainWindow):
         super(MainWindow, self).__init__()
         self.g = Global(mainwindow=self, **globalArgs)
         self.g.registerRetranslate(self.retranslateUi)
-        icon = os.path.join(media_root, 'items', 'poke-ball.png')
+        icon = resource_filename('pokedex-media', 'items/poke-ball.png')
         self.setWindowIcon(QtGui.QIcon(icon))
 
         splitter = QtGui.QSplitter(self)
@@ -222,14 +221,14 @@ class MainWindow(QtGui.QMainWindow):
             )
         iconArgs = []
         for i, thing in enumerate((
-                ('pokedex', u'data/media/items/poké-ball.png'),
+                ('pokedex-media', u'items/poke-ball.png'),
                 _(u'''<strong>Pokédex 0.1</strong>
                     <br>
                     by Petr “En-Cu-Kou” Viktorin &lt;<a
                     href="encukou@gmail.com">encukou@gmail.com</a>&gt;
                     <br>
                     Provided under the open-source MIT license'''),
-                ('pokedex', u'data/media/icons/133.png'),
+                ('pokedex-media', u'pokemon/icons/133.png'),
                 _(u'''Data from the veekun database: see <a
                     href="http://veekun.com">http://veekun.com</a>
                     <br>

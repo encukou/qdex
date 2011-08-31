@@ -16,6 +16,12 @@ import pkg_resources
 media_root = os.path.join(pkg_resources.resource_filename('pokedex', '.'),
         '..', '..', 'pokedex-media')
 
+def resource_filename(package, *path):
+    if package == 'pokedex-media':
+        return os.path.join(media_root, *path)
+    else:
+        return pkg_resources.resource_filename(package, *path)
+
 from qdex.mainwindow import MainWindow
 
 def main():
