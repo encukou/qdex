@@ -220,13 +220,26 @@ class PokemonColumn(ForeignKeyColumn):
         ForeignKeyColumn.__init__(self, foreignMappedClass=foreignMappedClass,
                 attr='pokemon', **kwargs)
 
-class SpeciesColumn(ForeignKeyColumn):
+    def getSortClause(self, descending=True, **kwargs):
+        clause = ForeignKeySortClause(self, descending, **kwargs)
+        clause.collapsing = 1
+        return clause
+
+class SpeciesColumn(PokemonColumn):
     """A proxy column that gives information about a pokémon species from its form.
     """
     def __init__(self, **kwargs):
-        foreignMappedClass = kwargs.pop('foreignMappedClass', tables.PokemonSpecies)
-        ForeignKeyColumn.__init__(self, foreignMappedClass=foreignMappedClass,
-                attr='species', **kwargs)
+        kwargs['foreignColumn'] = {
+                'foreignColumn': kwargs['foreignColumn'],
+                'class': 'ForeignKeyColumn',
+                'attr': 'species',
+            }
+        PokemonColumn.__init__(self, **kwargs)
+
+    def getSortClause(self, descending=True, **kwargs):
+        clause = ForeignKeySortClause(self, descending, **kwargs)
+        clause.collapsing = 2
+        return clause
 
 class AssociationListColumn(SimpleModelColumn):
     """A proxy column that gives information about an AssociationProxy.

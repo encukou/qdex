@@ -18,7 +18,7 @@ class SortClause(object):
     """A sort clause to be attached to a view
     """
     __metaclass__ = LoadableMetaclass
-    collapsing = 1
+    collapsing = 0
 
     def __init__(self, column, descending=False, collapsing=None):
         self.column = column
