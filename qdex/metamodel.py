@@ -18,8 +18,6 @@ from qdex.loadableclass import LoadableMetaclass
 from qdex import yaml
 from qdex import media_root
 
-# XXX: Move the default contents somewhere else
-
 def MetaModelView(parent=None):
     """A view for the meta model
 

@@ -24,6 +24,13 @@ class SortClause(object):
         if collapsing:
             self.collapsing = collapsing
 
+    @property
+    def name(self):
+        if self.column:
+            return self.column.name
+        else:
+            return '?'
+
     def save(self):
         """Get this clause's representation as a simple dict
         """

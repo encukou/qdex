@@ -11,7 +11,27 @@ Qt = QtCore.Qt
 
 from qdex.columngroup import defaultColumnGroups, buildColumnMenu
 
-class QueryView(QtGui.QTreeView):
+class QueryView(QtGui.QWidget):
+    def __init__(self, *args):
+        QtGui.QWidget.__init__(self, *args)
+        self.result_view = ResultView()
+        self.sort_view = QtGui.QTreeView()
+
+        self.splitter = QtGui.QSplitter(Qt.Vertical)
+        self.splitter.addWidget(self.result_view)
+        self.splitter.addWidget(self.sort_view)
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 0)
+        self.splitter.setSizes([1, 1])
+
+        self.layout = QtGui.QHBoxLayout(self)
+        self.layout.addWidget(self.splitter)
+
+    def setModel(self, model):
+        self.result_view.setModel(model)
+        self.sort_view.setModel(model.sortClauses)
+
+class ResultView(QtGui.QTreeView):
     """A tree-view for displaying query models.
 
     The main difference from a vanilla QTreeView is that this sets
@@ -43,11 +63,11 @@ class QueryView(QtGui.QTreeView):
         # Qt remembers which column the view is sorted by, and tries to restore
         # the sort. We don't want that, and neither do we want to un-sort the
         # previous model, so set model to None and un-sort the view.
-        super(QueryView, self).setModel(None)
+        super(ResultView, self).setModel(None)
         self.sortByColumn(-1, Qt.AscendingOrder)
 
         self.g = model.g
-        super(QueryView, self).setModel(model)
+        super(ResultView, self).setModel(model)
         model.columnsInserted.connect(self.columnsChanged)
         model.columnsRemoved.connect(self.columnsChanged)
         model.columnsMoved.connect(self.columnsChanged)

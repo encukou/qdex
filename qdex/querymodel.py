@@ -10,7 +10,7 @@ from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 
 from sqlalchemy.sql.expression import and_, or_
-from sqlalchemy.orm import contains_eager, lazyload, aliased, eagerload
+from sqlalchemy.orm import contains_eager, lazyload, eagerload
 from pokedex.db import tables
 import traceback
 
@@ -19,6 +19,8 @@ from qdex.loadableclass import LoadableMetaclass
 from qdex.sortclause import DefaultPokemonSortClause
 from qdex.pokedexhelpers import default_language_param
 from qdex.delegate import PokemonDelegate
+from qdex.sortmodel import SortModel
+from qdex.querybuilder import QueryBuilder
 
 class ModelMetaclass(LoadableMetaclass, type(QtCore.QAbstractItemModel)):
     """Merged metaclass"""
@@ -50,14 +52,19 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             self.defaultSortClause = self.columns[0].getSortClause()
         else:
             self.defaultSortClause = defaultSortClause
-        self.sortClauses = [self.defaultSortClause]
+        self.sortClauses = SortModel(self, [])
+        self.sortClauses.rowsInserted.connect(self.sortChanged)
         self.filters = []
         self._setQuery()
+
+    @property
+    def allSortClauses(self):
+        return (self.defaultSortClause, ) + tuple(self.sortClauses)
 
     def _setQuery(self):
         """Called every time the query changes"""
         builder = self.baseBuilder()
-        for clause in reversed(self.sortClauses):
+        for clause in reversed(self.allSortClauses):
             clause.sort(builder)
         self._query = builder.query
         self._rows = int(self._query.count())
@@ -161,20 +168,16 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             column = self.columns[columnIndex]
             descending = (order == Qt.DescendingOrder)
             sortClause = column.getSortClause(descending=descending)
-            builder = QueryBuilder(self.baseQuery, self.mappedClass)
-            for clause in self.sortClauses:
-                if not sortClause.overrides(clause, builder):
-                    newClauses.append(clause)
-            newClauses.append(sortClause)
-        if newClauses != self.sortClauses:
-            QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.WaitCursor))
-            try:
-                self.layoutAboutToBeChanged.emit()
-                self.sortClauses = newClauses
-                self._setQuery()
-                self.layoutChanged.emit()
-            finally:
-                QtGui.QApplication.restoreOverrideCursor()
+            self.sortClauses.append(sortClause)
+
+    def sortChanged(self):
+        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.WaitCursor))
+        try:
+            self.layoutAboutToBeChanged.emit()
+            self._setQuery()
+            self.layoutChanged.emit()
+        finally:
+            QtGui.QApplication.restoreOverrideCursor()
 
 class TableModel(BaseQueryModel):
     """Model that displays a DB table"""
@@ -236,7 +239,7 @@ class PokemonModel(BaseQueryModel):
         builder = super(PokemonModel, self).baseBuilder()
         builder.setIncluded(tables.PokemonSpecies.pokemon, tables.Pokemon)
         builder.setIncluded(tables.Pokemon.forms, tables.PokemonForm)
-        self.collapsing = min(c.collapsing for c in self.sortClauses)
+        self.collapsing = min(c.collapsing for c in self.allSortClauses)
         if self.collapsing >= 2:
             builder.query = builder.query.filter(tables.Pokemon.is_default == True)
         if self.collapsing >= 1:
@@ -315,97 +318,3 @@ class PokemonModel(BaseQueryModel):
         return dict(
                 columns=[column.save() for column in self.columns],
             )
-
-class QueryBuilder(object):
-    """Helps build a query while avoiding duplicate tables.
-
-    Attributes (and __init__ args):
-    `query`: he query being built, can be modified directly
-    'mappedClass`: the mapped class that's being selected from the query
-    """
-    def __init__(self, query, mappedClass, _relations=None, _query=None):
-        self.mappedClass = mappedClass
-        # _relations is a dict that maps relationship keys to (mapped class,
-        # sub-_relations) tuples
-        if _relations is None:
-            self._relations = {}
-        else:
-            self._relations = _relations
-        # Sub-builders need to be able to modify the query, so store it
-        # in a shared one-element list.
-        self._query = _query or [query]
-
-    @property
-    def query(self):
-        """Get the query"""
-        return self._query[0]
-
-    @query.setter
-    def query(self, newQuery):
-        """Set the query"""
-        self._query[0] = newQuery
-
-    def join(self, relation, foreignClass):
-        """Join the relation to an alias of targetClass, return the alias
-
-        Modifies the query.
-        If this relation was joined in already, return the existing alias.
-        """
-        return self.joinOn(relation, lambda *a: relation, foreignClass)
-
-    def joinOn(self, key, onFactory, foreignClass,
-            secondary=None, secondaryOnFactory=None,
-        ):
-        """Join an alias of foreignClass, return the alias
-
-        Modifies the query.
-        `key`: a unique key identifying the particular join. If the key was
-            already used, the pre-existing alias is returned.
-        `onFactory`: a function that takes the aliased table and returns a
-            relation or where-clause to join on
-        `secondary`, secondaryJoinFactory: Can be used for a intermediary
-            table. If present, each onFactory will receive two arguments:
-            the aliased foreignClass and the intermediary alias.
-        """
-        try:
-            return self._relations[key][0]
-        except KeyError:
-            aliasedClass = aliased(foreignClass)
-            self._relations[key] = aliasedClass, {}
-            if secondary is not None:
-                aliasedSecondary = secondary.alias()
-                self.query = self.query.outerjoin((
-                        aliasedSecondary,
-                        secondaryOnFactory(aliasedClass, aliasedSecondary),
-                    ))
-                self.query = self.query.outerjoin((
-                        aliasedClass,
-                        onFactory(aliasedClass, aliasedSecondary),
-                    ))
-            else:
-                self.query = self.query.outerjoin((
-                        aliasedClass,
-                        onFactory(aliasedClass),
-                    ))
-            return aliasedClass
-
-    def subbuilder(self, relation, foreignClass, **kwargs):
-        """Make a new builder that operates on a joined class
-        """
-        aliasedClass = self.join(relation, foreignClass, **kwargs)
-        return QueryBuilder(None, aliasedClass,
-                _relations=self._relations[relation][1], _query=self._query)
-
-    def subbuilderOn(self, key, onFactory, foreignClass, **kwargs):
-        """As subbuilder, but joins using joinOn
-        """
-        aliasedClass = self.joinOn(key, onFactory, foreignClass, **kwargs)
-        return QueryBuilder(None, aliasedClass,
-                _relations=self._relations[key][1], _query=self._query)
-
-    def setIncluded(self, key, foreignClass):
-        """Mark foreignClass as already included in the builder, under key.
-
-        Useful for SQLA's joined-loaded properties
-        """
-        self._relations[key] = foreignClass, {}
