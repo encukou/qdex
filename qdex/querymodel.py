@@ -54,6 +54,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             self.defaultSortClause = defaultSortClause
         self.sortClauses = SortModel(self, [])
         self.sortClauses.rowsInserted.connect(self.sortChanged)
+        self.sortClauses.dataChanged.connect(self.sortChanged)
         self.filters = []
         self._setQuery()
 

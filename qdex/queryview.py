@@ -10,22 +10,19 @@ from PySide import QtCore, QtGui
 Qt = QtCore.Qt
 
 from qdex.columngroup import defaultColumnGroups, buildColumnMenu
+from qdex.sortview import SortView
 
 class QueryView(QtGui.QWidget):
     def __init__(self, *args):
         QtGui.QWidget.__init__(self, *args)
         self.result_view = ResultView()
-        self.sort_view = QtGui.QTreeView()
+        self.sort_view = SortView()
 
-        self.splitter = QtGui.QSplitter(Qt.Vertical)
-        self.splitter.addWidget(self.result_view)
-        self.splitter.addWidget(self.sort_view)
-        self.splitter.setStretchFactor(0, 1)
-        self.splitter.setStretchFactor(1, 0)
-        self.splitter.setSizes([1, 1])
-
-        self.layout = QtGui.QHBoxLayout(self)
-        self.layout.addWidget(self.splitter)
+        self.layout = QtGui.QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+        self.layout.addWidget(self.result_view)
+        self.layout.addWidget(self.sort_view)
 
     def setModel(self, model):
         self.result_view.setModel(model)

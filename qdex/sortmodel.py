@@ -58,9 +58,9 @@ class SortModel(QtCore.QAbstractItemModel):
         elif index.column() == ColumnIndices.order:
             if role == Qt.DisplayRole:
                 if clause.descending:
-                    return u'↓'
-                else:
                     return u'↑'
+                else:
+                    return u'↓'
 
     def index(self, row, column, parent=QtCore.QModelIndex()):
         if not parent.isValid():
@@ -102,3 +102,11 @@ class SortModel(QtCore.QAbstractItemModel):
                 self.clauses.append(clause)
                 self.endInsertRows()
                 return
+
+    def __setitem__(self, index, clause):
+        self.clauses[index] = clause
+        self.dataChanged.emit(self.index(index, 0),
+                self.index(index, self.columnCount() - 1))
+
+    def replace(self, old, new):
+        self[self.clauses.index(old)] = new

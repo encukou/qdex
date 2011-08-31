@@ -6,6 +6,8 @@
 A sort clause for query models
 """
 
+import copy
+
 from sqlalchemy.sql.expression import and_, case
 from pokedex.db import tables
 
@@ -60,6 +62,13 @@ class SortClause(object):
         selfOrderColumns = set(self.orderColumns(builder))
         otherOrderColumns = set(other.orderColumns(builder))
         return selfOrderColumns >= otherOrderColumns
+
+    def other_direction(self):
+        """Return a clause with the opposite sorting direction
+        """
+        new = copy.copy(self)
+        new.descending = not new.descending
+        return new
 
 class SimpleSortClause(SortClause):
     """Simply sorts by the associated column's orderColumns
@@ -143,7 +152,13 @@ class LocalStringSortClause(SortClause):
         query = query.order_by(order)
         builder.query = query
 
-class ForeignKeySortClause(SortClause):
+class BaseForeignSortClause(SortClause):
+    def other_direction(self):
+        other = super(BaseForeignSortClause, self).other_direction()
+        other.foreignClause = other.foreignClause.other_direction()
+        return other
+
+class ForeignKeySortClause(BaseForeignSortClause):
     """Proxy sort clause, for use with a ForeignKeyColumn
 
     Set `join` to True to disable joining the proxied class
@@ -160,7 +175,7 @@ class ForeignKeySortClause(SortClause):
             )
         self.foreignClause.sort(subbuilder)
 
-class AssociationListSortClause(SortClause):
+class AssociationListSortClause(BaseForeignSortClause):
     """Proxy sort clause, for use with a ForeignKeyColumn
 
     Set `join` to True to disable joining the proxied class
