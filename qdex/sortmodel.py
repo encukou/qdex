@@ -62,10 +62,13 @@ class SortModel(QtCore.QAbstractItemModel):
                 else:
                     return u'↓'
 
-    def index(self, row, column, parent=QtCore.QModelIndex()):
-        if not parent.isValid():
-            if 0 <= row < self.rowCount() and 0 <= column < self.columnCount():
-                return self.createIndex(row, column)
+    def index(self, row, column=0, parent=QtCore.QModelIndex()):
+        if isinstance(row, int):
+            if not parent.isValid():
+                if 0 <= row < self.rowCount() and 0 <= column < self.columnCount():
+                    return self.createIndex(row, column)
+        else:
+            return self.clauses.index(row)
 
     def rowCount(self, parent=QtCore.QModelIndex()):
         if parent.isValid():
@@ -75,6 +78,10 @@ class SortModel(QtCore.QAbstractItemModel):
 
     def parent(self, index):
         return QtCore.QModelIndex()
+
+    def clear(self):
+        while self.clauses:
+            del self[len(self) - 1]
 
     # List-like methods
 
@@ -91,9 +98,7 @@ class SortModel(QtCore.QAbstractItemModel):
             # clause at a time.
             for i, existingClause in enumerate(self.clauses):
                 if existingClause.overrides(clause, builder):
-                    self.beginRemoveRows(QtCore.QModelIndex(), i, i)
-                    del self.clauses[i]
-                    self.endRemoveRows()
+                    del self[i]
                     break
             else:
                 # All overridden clauses removed; add the new one
@@ -108,5 +113,26 @@ class SortModel(QtCore.QAbstractItemModel):
         self.dataChanged.emit(self.index(index, 0),
                 self.index(index, self.columnCount() - 1))
 
+    def __delitem__(self, index):
+        self.beginRemoveRows(QtCore.QModelIndex(), index, index)
+        del self.clauses[index]
+        self.endRemoveRows()
+
     def replace(self, old, new):
         self[self.clauses.index(old)] = new
+
+    def remove(self, clause):
+        del self[self.clauses.index(clause)]
+
+    def increase_priority(self, clause, amount=1):
+        index = self.clauses.index(clause)
+        del self[index]
+        index += amount
+        if index < 0: index = 0
+        if index >= len(self): index = len(self)
+        self.beginInsertRows(QtCore.QModelIndex(), index, index)
+        self.clauses.insert(index, clause)
+        self.endInsertRows()
+
+    def decrease_priority(self, clause, amount=1):
+        self.increase_priority(clause, -amount)

@@ -54,6 +54,7 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             self.defaultSortClause = defaultSortClause
         self.sortClauses = SortModel(self, [])
         self.sortClauses.rowsInserted.connect(self.sortChanged)
+        self.sortClauses.rowsRemoved.connect(self.sortChanged)
         self.sortClauses.dataChanged.connect(self.sortChanged)
         self.filters = []
         self._setQuery()
@@ -172,13 +173,21 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
             self.sortClauses.append(sortClause)
 
     def sortChanged(self):
-        QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.WaitCursor))
-        try:
-            self.layoutAboutToBeChanged.emit()
-            self._setQuery()
-            self.layoutChanged.emit()
-        finally:
-            QtGui.QApplication.restoreOverrideCursor()
+        # Sorting's an expensive operation; if there are more resorts in a
+        # single event loop iteration, only actually sort once
+        self._sortChanged = True
+        def resort():
+            if not self._sortChanged:
+                return
+            self._sortChanged = False
+            QtGui.QApplication.setOverrideCursor(QtGui.QCursor(Qt.WaitCursor))
+            try:
+                self.layoutAboutToBeChanged.emit()
+                self._setQuery()
+                self.layoutChanged.emit()
+            finally:
+                QtGui.QApplication.restoreOverrideCursor()
+        QtCore.QTimer.singleShot(0, resort)
 
 class TableModel(BaseQueryModel):
     """Model that displays a DB table"""
