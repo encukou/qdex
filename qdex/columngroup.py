@@ -59,7 +59,7 @@ class ColumnMenuBuilder(ColumnGroupVisitor):
                 name = self.g.translator(self.rootString).format(name)
             else:
                 name = name
-            action = menu.addAction(name)
+            action = menu.addAction(name.replace('&', '&&'))
         if columnGroup.columnClass:
             action.triggered.connect(self.slotFactory(columnGroup))
         action.setEnabled(columnGroup.enabled)
@@ -160,10 +160,15 @@ def columnFactory(columnClass):
                 self.name = name
                 self.kwargs = kwargs
 
-            def getColumn(self, model):
+            def getColumn(self, model, mappedClass=None):
                 """Get a new column from this factory"""
+                if mappedClass:
+                    kwargs = dict(mappedClass=mappedClass)
+                else:
+                    kwargs = dict()
+                kwargs.update(self.kwargs)
                 return self.columnClass(name=self.name, model=model,
-                        **self.kwargs)
+                        **kwargs)
 
         columnFactory.memo[columnClass] = ColumnFactory
         return ColumnFactory

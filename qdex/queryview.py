@@ -114,9 +114,23 @@ class ResultView(QtGui.QTreeView):
                 remove = lambda: model.removeColumn(columnIndex)
                 action.triggered.connect(remove)
                 menu.addSeparator()
+                for parent, subcolumn in column.getSubcolumns(column):
+                    def scope(parent, subcolumn):
+                        try:
+                            foreignClass = subcolumn.mappedClass
+                        except AttributeError: pass
+                        else:
+                            group = defaultColumnGroups.get(foreignClass.__name__)
+                            if group:
+                                submenu = menu.addMenu(_('Display {0} as...').format(parent.baseName or parent.name))
+                                buildColumnMenu(self.model().g, submenu, group, _(u'{0} Column'),
+                                        lambda columnGroup: lambda: model.replaceQueryColumn(columnIndex,
+                                            column.replaceSubcolumn(subcolumn, columnGroup.getColumn(self.model(), mappedClass=subcolumn.mappedClass))))
+                    scope(parent, subcolumn)
         # XXX: Move the table's column groups to the model
         group = defaultColumnGroups.get(model.tableName)
         if group:
+            menu.addSeparator()
             def insertColumn(columnGroup):
                 """Insert the column from the given columnGroup"""
                 model.insertQueryColumn(

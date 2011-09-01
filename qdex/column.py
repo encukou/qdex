@@ -6,6 +6,8 @@
 A query models for pokémon
 """
 
+import copy
+
 from PySide import QtGui, QtCore
 Qt = QtCore.Qt
 
@@ -28,8 +30,12 @@ class ModelColumn(object):
     """
     __metaclass__ = LoadableMetaclass
 
-    def __init__(self, name, model, identifier=None, mappedClass=None):
-        self.name = name
+    def __init__(self, name, model, identifier=None, mappedClass=None, baseName=None):
+        self.name = name or ''
+        if baseName is None:
+            self.baseName = name
+        else:
+            self.baseName = baseName
         self.model = model
         if mappedClass is None:
             self.mappedClass = self.model.mappedClass
@@ -61,7 +67,7 @@ class ModelColumn(object):
 
     def save(self):
         """Return __init__ kwargs needed to reconstruct self"""
-        return dict(name=self.name)
+        return dict(name=self.name, baseName=self.baseName)
 
     def getSortClause(self, descending=True, **kwargs):
         """Get a SortClause that corresponds to this column & given args
@@ -78,6 +84,12 @@ class ModelColumn(object):
         """
         raise NotImplementedError
 
+    def getSubcolumns(self, parent):
+        return ()
+
+    def replaceSubcolumn(self, orig_column, replacement):
+        return self
+
 class SimpleModelColumn(ModelColumn):
     """A pretty dumb column that just gets an attribute and displays it
     """
@@ -89,7 +101,8 @@ class SimpleModelColumn(ModelColumn):
 
     def data(self, item, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
-            return getattr(item, self.attr)
+            if item is not None:
+                return getattr(item, self.attr)
 
     def save(self):
         representation = super(SimpleModelColumn, self).save()
@@ -212,11 +225,35 @@ class ForeignKeyColumn(SimpleModelColumn):
             )
         return self.foreignColumn.orderColumns(subbuilder)
 
+    def getSubcolumns(self, parent):
+        yield self, self.foreignColumn
+        for column in self.foreignColumn.getSubcolumns(self):
+            yield column
+
+    def replaceSubcolumn(self, orig_column, replacement):
+        if self.foreignColumn != orig_column:
+            # Not replacing exactly our child column, but the target might be
+            # further down the hierarchy
+            replacement = self.foreignColumn.replaceSubcolumn(orig_column, replacement)
+            if replacement == self.foreignColumn:
+                # If no replacement took place, return self unchanged
+                return self
+        # We need to replace our foreignColumn
+        new = copy.copy(self)
+        new.foreignColumn = replacement
+        _ = self.model.g.translator
+        if self.baseName:
+            new.name = _(self.baseName) + '.' + _(replacement.name)
+        else:
+            new.name = replacement.name
+        return new
+
 class PokemonColumn(ForeignKeyColumn):
     """A proxy column that gives information about a pokémon from its form.
     """
     def __init__(self, **kwargs):
         foreignMappedClass = kwargs.pop('foreignMappedClass', tables.Pokemon)
+        kwargs.setdefault('baseName', '')
         ForeignKeyColumn.__init__(self, foreignMappedClass=foreignMappedClass,
                 attr='pokemon', **kwargs)
 
@@ -224,6 +261,11 @@ class PokemonColumn(ForeignKeyColumn):
         clause = ForeignKeySortClause(self, descending, **kwargs)
         clause.collapsing = 1
         return clause
+
+    def getSubcolumns(self, parent):
+        yield parent, self.foreignColumn
+        for column in self.foreignColumn.getSubcolumns(parent):
+            yield column
 
 class SpeciesColumn(PokemonColumn):
     """A proxy column that gives information about a pokémon species from its form.
@@ -241,7 +283,7 @@ class SpeciesColumn(PokemonColumn):
         clause.collapsing = 2
         return clause
 
-class AssociationListColumn(SimpleModelColumn):
+class AssociationListColumn(ForeignKeyColumn):
     """A proxy column that gives information about an AssociationProxy.
 
     `foreignColumn` is a column for the referenced table
@@ -252,6 +294,7 @@ class AssociationListColumn(SimpleModelColumn):
     """
     def __init__(self, orderAttr, orderValues, separator, foreignColumn,
             foreignMappedClass=None, **kwargs):
+        # XXX: NB: skipping ForeignKeyColumn initialization
         SimpleModelColumn.__init__(self, **kwargs)
         self.orderAttr = orderAttr
         self.orderValues = orderValues
@@ -297,11 +340,6 @@ class AssociationListColumn(SimpleModelColumn):
                 sortedData.append('...')
             return self.separator.join(unicode(d) for d in sortedData)
 
-    def orderColumns(self, builder):
-        for subbuilder in self.getOrderSubbuilders(builder):
-            for column in self.foreignColumn.orderColumns(subbuilder):
-                yield column
-
     def getOrderSubbuilders(self, builder):
         """Get a sub-builder for each item in the list we're ordering by
         """
@@ -325,6 +363,13 @@ class AssociationListColumn(SimpleModelColumn):
 
     def getSortClause(self, descending=True, **kwargs):
         return AssociationListSortClause(self, descending, **kwargs)
+
+    def save(self):
+        representation = super(AssociationListColumn, self).save()
+        representation['orderAttr'] = self.orderAttr
+        representation['orderValues'] = self.orderValues
+        representation['separator'] = self.separator
+        return representation
 
 class PokemonNameColumn(SimpleModelColumn):
     """Display the pokémon name & icon"""

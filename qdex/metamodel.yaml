@@ -17,6 +17,7 @@ children:
                 class: PokemonColumn
                 foreignColumn:
                     class: AssociationListColumn
+                    name: !_ Type
                     attr: types
                     orderAttr: slot
                     separator: "/"

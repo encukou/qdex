@@ -162,6 +162,13 @@ class BaseQueryModel(QtCore.QAbstractItemModel):
         self.columns.insert(position, column)
         self.endInsertColumns()
 
+    def replaceQueryColumn(self, position, new_column):
+        old_column = self.columns[position]
+        self.columns[position] = new_column
+        self.dataChanged.emit(self.index(0, position),
+                self.index(self.rowCount, position))
+        self.headerDataChanged.emit(Qt.Horizontal, position, position)
+
     def sort(self, columnIndex, order=Qt.AscendingOrder):
         newClauses = [self.defaultSortClause]
         if columnIndex == -1:

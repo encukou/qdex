@@ -64,7 +64,7 @@ def loadable(cls):
         representation = oldSave(self)
         classname = self.classNameForLoad
         assert classname is not None, "%s can't be saved." % self
-        representation['class'] = self.classname
+        representation['class'] = classname
         return representation
     cls.save = save
 

@@ -10,10 +10,11 @@ PokemonForm:
         -   name: !_ Pokémon
             identifier: pokemon
             class: PokemonNameColumn
-        -   name: !_ Type
+        -   name: !_ Types
             class: PokemonColumn
             foreignColumn:
                 class: AssociationListColumn
+                name: !_ Type
                 attr: types
                 orderAttr: slot
                 separator: "/"
@@ -26,6 +27,7 @@ PokemonForm:
             class: PokemonColumn
             foreignColumn:
                 class: AssociationListColumn
+                name: !_ Ability
                 attr: abilities
                 orderAttr: slot
                 separator: ", "
@@ -33,10 +35,11 @@ PokemonForm:
                 foreignColumn:
                     attr: name
                     class: GameStringColumn
-        -   name: !_ Dream Ability
+        -   name: !_ Hidden Ability
             class: PokemonColumn (n/a)
             foreignColumn:
                 class: AssociationValueColumn
+                name: !_ Hidden Ability
                 attr: abilities
                 orderAttr: slot
                 value: 3
@@ -149,17 +152,14 @@ PokemonForm:
         class: ColumnGroup
         columns:
         -   name: Evolves from
-            class: PokemonColumn (n/a)
+            class: SpeciesColumn
             foreignColumn:
                 class: ForeignKeyColumn
-                attr: parent_pokemon
-                idAttr: evolves_from_pokemon_id
+                attr: parent_species
+                idAttr: evolves_from_species_id
                 foreignColumn:
-                    class: ForeignKeyColumn
-                    attr: form
-                    idAttr: ???
-                    foreignColumn:
-                        class: PokemonNameColumn
+                    class: GameStringColumn
+                    attr: name
         -   name: Evolution method
             class: PokemonEvolutionMethodColumn
         -   name: Stage Summary  # XXX: Don't forget is_baby!
@@ -310,6 +310,7 @@ Type:
         columns:
         -   name: !_ Type
             class: LocalStringColumn
+            attr: name
     -   name: !_ Professor's
         class: ColumnGroup
         columns:
@@ -494,5 +495,34 @@ Nature:
         attr: hates_flavor
         class: ForeignKeyColumn
         foreignColumn:
+            class: LocalStringColumn
+            attr: name
+Generation:
+    columns:
+    -   name: !_ Number
+        attr: id
+    -   name: !_ Name
+        attr: name
+        class: LocalStringColumn
+    -   name: !_ Canonical Pokédex
+        attr: canonical_pokedex
+        class: ForeignKeyColumn
+        foreignColumn:
+            name: !_ Name
+            class: LocalStringColumn
+            attr: name
+Pokedex:
+    columns:
+    -   name: !_ Name
+        attr: name
+        class: LocalStringColumn
+    -   name: !_ Description
+        attr: description
+        class: LocalStringColumn
+    -   name: !_ Region
+        attr: region
+        class: ForeignKeyColumn
+        foreignColumn:
+            name: !_ Name
             class: LocalStringColumn
             attr: name
